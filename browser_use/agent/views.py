@@ -77,6 +77,9 @@ class AgentState(BaseModel):
 	message_manager_state: MessageManagerState = Field(default_factory=MessageManagerState)
 	file_system_state: FileSystemState | None = None
 
+	# Loop detection for AWI mode (track recent action patterns)
+	recent_action_hashes: list[str] = Field(default_factory=list)  # Hash of last N action sequences
+
 
 @dataclass
 class AgentStepInfo:

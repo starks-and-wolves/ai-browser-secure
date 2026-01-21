@@ -41,6 +41,7 @@
 # 🚀 Enhanced Browser-Use with AWI Support
 
 This is an **enhanced version** of browser-use that includes:
+
 - ✨ **AWI (Agent Web Interface)** mode for 500x faster API-based automation
 - 🛡️ **Permission mode** with user approval workflows and domain policies
 - 🔒 **Enhanced security** features for safe agent automation
@@ -71,22 +72,46 @@ This is an **enhanced version** of browser-use that includes:
 Follow these steps to run the enhanced version locally:
 
 **1. Clone the repository:**
+
 ```bash
 git clone <repository-url>
 cd ai-browser-secure
 ```
 
 **2. Create and activate virtual environment:**
+
+**macOS/Linux:**
+
 ```bash
 # Create virtual environment with Python 3.11+
 uv venv --python 3.11
 
 # Activate it
-source .venv/bin/activate  # macOS/Linux
-# .venv\Scripts\activate   # Windows
+source .venv/bin/activate
+```
+
+**Windows PowerShell:**
+
+```powershell
+# Create virtual environment with Python 3.11+
+uv venv --python 3.11
+
+# Activate it
+.venv\Scripts\Activate.ps1
+```
+
+**Windows Command Prompt:**
+
+```cmd
+# Create virtual environment with Python 3.11+
+uv venv --python 3.11
+
+# Activate it
+.venv\Scripts\activate.bat
 ```
 
 **3. Install the enhanced version:**
+
 ```bash
 # Install local package in editable mode
 uv pip install -e .
@@ -100,6 +125,7 @@ uv pip install -e ".[all]"
 **4. Set up your API keys:**
 
 Create a `.env` file in the project root:
+
 ```bash
 # Choose one of these LLM providers:
 OPENAI_API_KEY=your-openai-key
@@ -111,11 +137,13 @@ DEFAULT_LLM_MODEL=gpt-4o
 ```
 
 **5. Install Chromium browser:**
+
 ```bash
 uv run browser-use install
 ```
 
 **6. Run the test script:**
+
 ```bash
 # Run all three modes (traditional, permission, AWI)
 python test_browser_use.py all
@@ -127,6 +155,7 @@ python test_browser_use.py awi
 ```
 
 **7. Or run your own agent:**
+
 ```python
 from browser_use import Agent, Browser
 from browser_use.llm import get_default_llm
@@ -161,6 +190,7 @@ if __name__ == "__main__":
 ### The Problem with Traditional Automation
 
 Traditional browser automation requires:
+
 ```python
 # Traditional approach - slow and fragile
 1. Navigate to page          # Load full HTML (~100KB)
@@ -172,8 +202,9 @@ Traditional browser automation requires:
 ```
 
 **Problems:**
+
 - 🐌 **Slow**: Multiple page loads, DOM parsing, element searches
-- 💰 **Expensive**: 100,000+ tokens per page for LLM processing
+- 💰 **Expensive**: 10,000+ tokens for LLM processing of large websites
 - 🔨 **Brittle**: Breaks when website HTML/CSS changes
 - 🎨 **UI-dependent**: Requires visual rendering, CSS, JavaScript
 
@@ -190,6 +221,7 @@ AWI provides a **structured API** that websites expose specifically for AI agent
 ```
 
 **Benefits:**
+
 - ⚡ **500x faster**: ~500 tokens vs ~100,000 tokens
 - 💵 **99.5% cheaper**: Fewer tokens = lower LLM costs
 - 🎯 **Reliable**: Structured API doesn't change like HTML
@@ -275,14 +307,15 @@ AWI provides a **structured API** that websites expose specifically for AI agent
 
 ### AWI vs Traditional - Token Comparison
 
-| Task | Traditional DOM | AWI Mode | Savings |
-|------|----------------|----------|---------|
-| List 10 blog posts | ~100,000 tokens | ~200 tokens | **99.8%** |
-| Create a comment | ~150,000 tokens | ~300 tokens | **99.8%** |
-| Search content | ~200,000 tokens | ~250 tokens | **99.9%** |
+| Task                      | Traditional DOM | AWI Mode      | Savings   |
+| ------------------------- | --------------- | ------------- | --------- |
+| List 10 blog posts        | ~100,000 tokens | ~200 tokens   | **99.8%** |
+| Create a comment          | ~150,000 tokens | ~300 tokens   | **99.8%** |
+| Search content            | ~200,000 tokens | ~250 tokens   | **99.9%** |
 | Multi-step task (5 steps) | ~500,000 tokens | ~1,000 tokens | **99.8%** |
 
 **Real Cost Example (using GPT-4):**
+
 - Traditional: 500,000 tokens × $0.03/1K = **$15.00**
 - AWI Mode: 1,000 tokens × $0.03/1K = **$0.03**
 - **Savings: $14.97 (99.8%)**
@@ -296,6 +329,7 @@ AWI provides a **structured API** that websites expose specifically for AI agent
 ### Why Permission Mode?
 
 AI agents are powerful but can potentially:
+
 - 🌐 Navigate to malicious websites
 - 📝 Submit forms with sensitive data
 - 💳 Make purchases or transactions
@@ -352,6 +386,7 @@ AI agents are powerful but can potentially:
 ### Permission Mode Features
 
 **1. Domain Whitelisting**
+
 ```python
 BrowserProfile(
     allowed_domains=['*.google.com', '*.github.com'],
@@ -362,6 +397,7 @@ BrowserProfile(
 ```
 
 **2. Domain Blacklisting**
+
 ```python
 BrowserProfile(
     blocked_domains=['*.facebook.com', '*.tiktok.com'],
@@ -371,6 +407,7 @@ BrowserProfile(
 ```
 
 **3. User Approval Levels**
+
 ```bash
 # Individual approval
 Approve? (yes/no): yes  # Just this one action
@@ -383,6 +420,7 @@ Approve? (all-domain): all-domain  # All actions on google.com
 ```
 
 **4. Detailed Approval Context**
+
 ```
 🟡 SECURITY APPROVAL REQUIRED 🟡
 
@@ -407,6 +445,7 @@ Here's what the permission dialog looks like in practice when testing domain res
 </div>
 
 In this example:
+
 - **Task**: Test accessibility of multiple domains (google.com, github.com, facebook.com, example.com)
 - **Current Action**: Agent attempting to navigate to facebook.com (blocked domain)
 - **Context Shown**:
@@ -580,6 +619,7 @@ This visual approval system gives you complete visibility and control over what 
 ```
 
 **Key Components:**
+
 - **Agent**: Orchestrates the entire flow
 - **AWI Discovery**: Checks if website supports AWI
 - **Permission Watchdog**: Security approval layer
@@ -595,6 +635,7 @@ This visual approval system gives you complete visibility and control over what 
 This enhanced version supports three distinct modes:
 
 ### 1️⃣ **Traditional Mode** (Default)
+
 Standard browser automation with DOM parsing, clicking, and typing.
 
 ```python
@@ -607,6 +648,7 @@ agent = Agent(
 ```
 
 ### 2️⃣ **Permission Mode**
+
 Adds security approval workflows - requires user confirmation for sensitive actions.
 
 ```python
@@ -626,6 +668,7 @@ agent = Agent(
 ```
 
 ### 3️⃣ **AWI Mode** (⚡ 500x Faster)
+
 Uses structured APIs instead of DOM parsing when websites support AWI protocol.
 
 ```python
@@ -638,12 +681,32 @@ agent = Agent(
 ```
 
 **Benefits of AWI Mode:**
+
 - 🚀 500x token reduction vs DOM parsing
 - 📊 Server-side session state management
 - 🔒 Explicit security policies from websites
 - 📈 Structured responses with semantic metadata
+- 🔄 Automatic backend wake-up with retry logic
+- 🔧 Automatic URL normalization (works with localhost-configured backends)
+- 🎯 **Model-aware optimization** - Automatically adapts manifest format for GPT-4, GPT-3.5, or weak models ([details](docs/awi/AWI_OPTIMIZATION_IMPLEMENTATION.md))
 
-> **Note:** AWI mode requires an AWI-enabled backend. This repo includes a test deployment at `https://ai-browser-security.onrender.com`
+> **Note:** AWI mode requires an AWI-enabled backend. This repo includes a test deployment at `https://ai-browser-security.onrender.com`. If the backend is sleeping, the test will automatically retry for up to 2 minutes while it wakes up. Backend manifests with localhost URLs are automatically normalized to use the actual deployment URL.
+
+#### 🎯 Model-Aware Optimization
+
+AWI mode automatically adapts to your LLM's capabilities:
+
+- **Premium Models (GPT-4+, Claude 3+)**: Full detailed manifest with complete validation rules
+- **Standard Models (GPT-3.5, Claude Instant)**: Simplified quick reference format
+- **Weak Models (gpt-5-nano)**: Extreme simplification with two-phase body construction
+
+**Token Savings**: Up to 75% reduction in context size for weaker models.
+
+📖 **Learn more:**
+
+- [LLM Optimization Guide](docs/awi/LLM_OPTIMIZATION.md) - How to optimize your AWI backend
+- [Implementation Details](docs/awi/AWI_OPTIMIZATION_IMPLEMENTATION.md) - How browser-use adapts to models
+- [Two-Phase Construction](docs/awi/TWO_PHASE_IMPLEMENTATION_SUMMARY.md) - Simplified approach for weak models
 
 ---
 
@@ -651,6 +714,8 @@ agent = Agent(
 
 - ✅ All features from official browser-use v0.11.2
 - ✅ AWI (Agent Web Interface) client implementation
+- ✅ **Model-aware LLM optimization** - Adapts AWI manifests for different model capabilities
+- ✅ **Two-phase body construction** - Simplified approach for weak models
 - ✅ Permission-based security workflows
 - ✅ Agent credential registry for AWI reuse
 - ✅ Comprehensive test suite
@@ -669,10 +734,25 @@ agent = Agent(
 
 ---
 
-For more information, check out:
-- [Official browser-use docs](https://docs.browser-use.com)
-- [AWI documentation](docs/awi/) in this repo
-- [Development guide](CLAUDE.md)
+## 📖 Documentation
+
+### Getting Started
+
+- [Official browser-use docs](https://docs.browser-use.com) - Core library documentation
+- [AWI Quick Start](docs/awi/QUICKSTART.md) - Get started with AWI mode
+- [AWI Overview](docs/awi/AWI_OVERVIEW.md) - Understanding the AWI protocol
+- [Development guide](CLAUDE.md) - Contributing and development setup
+
+### Advanced AWI Topics
+
+- **[LLM Optimization Guide](docs/awi/LLM_OPTIMIZATION.md)** - Optimizing AWI manifests for different model capabilities (GPT-4, GPT-3.5, weak models)
+- **[AWI Optimization Implementation](docs/awi/AWI_OPTIMIZATION_IMPLEMENTATION.md)** - How browser-use adapts to model capabilities and serves optimized manifests
+- **[Two-Phase Body Construction](docs/awi/TWO_PHASE_IMPLEMENTATION_SUMMARY.md)** - Simplified approach for weak models to construct API request bodies
+
+### Troubleshooting
+
+- [AWI Troubleshooting](docs/awi/TROUBLESHOOTING.md) - Common AWI issues and solutions
+- [Agent Registry](docs/awi/AGENT_REGISTRY.md) - Managing AWI credentials
 
 <br/>
 
@@ -712,6 +792,7 @@ python test_browser_use.py all
 ```
 
 **What you'll see:**
+
 1. **Traditional Mode**: DOM-based automation finding GitHub stars
 2. **Permission Mode**: Same task but with security approval dialogs
 3. **AWI Mode**: API-based automation (500x fewer tokens)
@@ -719,12 +800,14 @@ python test_browser_use.py all
 ### More Examples
 
 Check out the official browser-use examples (all compatible with this enhanced version):
+
 - 📋 [Form filling](https://github.com/browser-use/browser-use/blob/main/examples/use-cases/apply_to_job.py)
 - 🍎 [Grocery shopping](https://github.com/browser-use/browser-use/blob/main/examples/use-cases/buy_groceries.py)
 - 💻 [Personal assistant](https://github.com/browser-use/browser-use/blob/main/examples/use-cases/pcpartpicker.py)
 - 💡 [More examples ↗](https://docs.browser-use.com/examples)
 
 **AWI-Specific Examples:**
+
 - See `examples/awi_mode_*.py` for AWI integration examples
 - See `tests/awi_manual/` for comprehensive AWI tests
 
@@ -733,6 +816,7 @@ Check out the official browser-use examples (all compatible with this enhanced v
 # 🛠️ Development & Contributing
 
 **Project Structure:**
+
 ```
 ai-browser-secure/
 ├── browser_use/          # Enhanced browser-use library
@@ -749,6 +833,7 @@ ai-browser-secure/
 ```
 
 **Development Guidelines:**
+
 - See [CLAUDE.md](CLAUDE.md) for detailed development instructions
 - Use tabs for indentation (not spaces)
 - Run `uv run pre-commit run --all-files` before committing
@@ -759,52 +844,279 @@ ai-browser-secure/
 
 # 🔧 Troubleshooting
 
+### Critical: Always Use Virtual Environment
+
+⚠️ **All commands must be run inside the virtual environment!**
+
+```bash
+# macOS/Linux - Activate venv first
+source .venv/bin/activate
+
+# Windows PowerShell
+.venv\Scripts\Activate.ps1
+
+# Windows Command Prompt
+.venv\Scripts\activate.bat
+
+# Then run your commands
+python test_browser_use.py awi
+```
+
 ### Installation Issues
 
+**Problem:** "browser-use not installed" or "ModuleNotFoundError: No module named 'browser_use'"
+
+**Cause:** Either the package isn't installed, or you're not using the virtual environment.
+
+**Solution:**
+
+```bash
+# 1. Make sure you're in the project directory
+cd ai-browser-secure
+
+# 2. Activate virtual environment (CRITICAL!)
+source .venv/bin/activate  # macOS/Linux
+# or
+.venv\Scripts\Activate.ps1  # Windows PowerShell
+
+# 3. Verify you're in venv (should show .venv in path)
+which python  # macOS/Linux
+where python  # Windows
+
+# 4. Install the local enhanced version
+uv pip install -e .
+
+# 5. Verify installation
+python -c "import browser_use; print('✅ Installed successfully')"
+```
+
 **Problem:** "browser-use not found" after installation
+
 ```bash
 # Uninstall PyPI version if installed
 uv pip uninstall browser-use
 
-# Reinstall local version
+# Reinstall local version (inside venv!)
+source .venv/bin/activate  # Activate first!
 uv pip install -e .
 ```
 
 **Problem:** Import errors or version conflicts
+
 ```bash
-# Clean reinstall
+# Clean reinstall (macOS/Linux)
 rm -rf .venv
 uv venv --python 3.11
 source .venv/bin/activate
 uv pip install -e .
+
+# Clean reinstall (Windows PowerShell)
+Remove-Item -Recurse -Force .venv
+uv venv --python 3.11
+.venv\Scripts\Activate.ps1
+uv pip install -e .
+
+# Clean reinstall (Windows Command Prompt)
+rmdir /s /q .venv
+uv venv --python 3.11
+.venv\Scripts\activate.bat
+uv pip install -e .
+```
+
+### Windows-Specific Issues
+
+**Problem:** `ModuleNotFoundError: No module named 'browser_use'` on Windows
+
+**Quick Fix - Add to your Python script:**
+
+If `pip install -e .` doesn't work, add this at the top of your script:
+
+```python
+import sys
+from pathlib import Path
+
+# Add project directory to Python path (fixes Windows import issues)
+project_root = Path(__file__).parent.absolute()
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
+# Now imports will work
+from browser_use import Agent, Browser
+```
+
+This ensures Python finds the local `browser_use/` folder in your project.
+
+**Quick Diagnostic:**
+
+Run the diagnostic script to check your setup:
+
+```powershell
+python diagnose_windows.py
+```
+
+This will check your Python version, virtual environment, package installation, and provide specific fixes.
+
+**Solutions to try (in order):**
+
+1. **Verify virtual environment is activated:**
+
+   ```powershell
+   # PowerShell - look for (.venv) prefix in prompt
+   .venv\Scripts\Activate.ps1
+
+   # Command Prompt
+   .venv\Scripts\activate.bat
+
+   # Verify activation
+   python -c "import sys; print(sys.prefix)"
+   # Should show path ending in .venv
+   ```
+
+2. **Check if local version is installed:**
+
+   ```powershell
+   # Check installed package location
+   pip show browser-use
+
+   # Should show:
+   # Location: c:\path\to\ai-browser-secure
+   # Editable project location: c:\path\to\ai-browser-secure
+
+   # If it shows a site-packages path, uninstall and reinstall:
+   uv pip uninstall browser-use
+   uv pip install -e .
+   ```
+
+3. **Verify Python version:**
+
+   ```powershell
+   python --version
+   # Must be Python 3.11 or higher
+
+   # If wrong version, recreate venv with correct Python:
+   Remove-Item -Recurse -Force .venv
+   uv venv --python 3.11
+   .venv\Scripts\Activate.ps1
+   uv pip install -e .
+   ```
+
+4. **Check if browser_use directory exists:**
+
+   ```powershell
+   # Verify the package is in your project
+   dir browser_use
+
+   # Should show folders: agent, awi, browser, dom, etc.
+   ```
+
+5. **Try installing with full path:**
+
+   ```powershell
+   # Get current directory
+   pwd
+   # Output: C:\Users\YourName\ai-browser-secure
+
+   # Install with absolute path
+   uv pip install -e C:\Users\YourName\ai-browser-secure
+   ```
+
+6. **Windows path length issues:**
+
+   ```powershell
+   # Enable long paths in Windows (requires admin PowerShell)
+   New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" `
+     -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
+
+   # Or move project to shorter path
+   # Instead of: C:\Users\VeryLongUserName\Documents\Projects\ai-browser-secure
+   # Use: C:\projects\ai-browser-secure
+   ```
+
+7. **Windows execution policy (if .ps1 activation fails):**
+
+   ```powershell
+   # Check current policy
+   Get-ExecutionPolicy
+
+   # If "Restricted", temporarily allow scripts (run as admin):
+   Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+   # Then activate again
+   .venv\Scripts\Activate.ps1
+   ```
+
+**Problem:** `uv` command not found on Windows
+
+```powershell
+# Install uv for Windows
+pip install uv
+
+# Or use Python's pip directly instead
+pip install -e .
+```
+
+**Problem:** Import works but getting wrong version
+
+```powershell
+# Check if PyPI version is installed instead of local
+pip list | findstr browser-use
+
+# Should show:
+# browser-use  0.11.2  c:\path\to\ai-browser-secure
+
+# If version is different or no path shown:
+uv pip uninstall browser-use
+uv pip install -e .
+
+# Verify installation
+python -c "from browser_use import __version__; print(__version__)"
 ```
 
 ### AWI Mode Issues
 
 **Problem:** "EOF when reading a line" during AWI registration
+
 - **Cause:** Permission dialog requires interactive terminal
 - **Solution:** Run the test in an interactive terminal, not as a background process
 - **Workaround:** Use previously registered credentials (stored in `~/.config/browseruse/config.json`)
 
 **Problem:** AWI mode keeps asking for registration
+
 - **Cause:** Credentials stored for different domain
 - **Check:** `python -m browser_use.cli_agent_registry list`
 - **Solution:** Credentials are domain-specific for security. Register once per domain.
 
 **Problem:** AWI backend not available
-- **Check:** `curl https://ai-browser-security.onrender.com/.well-known/llm-text`
-- **Note:** Deployed backend may be in sleep mode (takes ~1 minute to wake up)
-- **Solution:** Wait 60 seconds and retry
+
+- **Automatic retry:** The test script automatically retries for up to 2 minutes if backend is sleeping
+- **Check manually:** `curl https://ai-browser-security.onrender.com/.well-known/llm-text`
+- **First request:** Backend may take 60-90 seconds to wake from sleep (you'll see retry progress)
+- **If retries fail:** Check your internet connection, try again later, or verify backend status
+
+**Problem:** AWI registration tries to connect to localhost instead of deployed backend
+
+- **Fixed:** The discovery module now automatically replaces localhost URLs in backend manifests with the actual deployment URL
+- **You'll see:** `🔧 Normalized X localhost URLs to https://actual-domain.com` in the logs
+- **No action needed:** This is handled automatically during AWI discovery
+
+**Problem:** Agent keeps repeating the same AWI actions without stopping
+
+- **Cause:** Agent may not recognize task completion from AWI responses
+- **Workaround:** Add explicit completion instruction in task: `"...then use the done action to mark task complete"`
+- **Set lower max_steps:** Use `max_steps=5-8` to prevent long loops while this is being investigated
+- **Current status:** Enhanced response formatting added to help agent recognize completion
 
 ### Test Failures
 
 **Problem:** Tests fail with Chrome errors
+
 ```bash
 # Reinstall Chrome
 uv run browser-use install
 ```
 
 **Problem:** LLM API errors
+
 - Check your API key in `.env` is valid
 - Verify you have credits/quota remaining
 - Try a different model: `DEFAULT_LLM_MODEL=gpt-4o-mini`
@@ -825,6 +1137,7 @@ uv run browser-use install
 **No!** Redis and MongoDB are only needed if you're running your own AWI backend server for testing. Browser-use itself (including AWI mode) is just an HTTP client and requires no database dependencies.
 
 The enhanced browser-use client only needs:
+
 - Python 3.11+
 - An LLM API key (OpenAI, Anthropic, etc.)
 - Chromium browser (installed via `uv run browser-use install`)
@@ -835,6 +1148,7 @@ The enhanced browser-use client only needs:
 <summary><b>What's the difference between this and official browser-use?</b></summary>
 
 This enhanced version includes everything from official browser-use v0.11.2, plus:
+
 - ✨ AWI mode for API-based automation (500x faster)
 - 🛡️ Permission mode with security approval workflows
 - 🔐 Domain whitelisting/blacklisting
@@ -869,6 +1183,7 @@ Test it with: `python test_browser_use.py awi`
 <summary><b>What LLM should I use?</b></summary>
 
 Any LLM supported by official browser-use works:
+
 - **OpenAI**: `gpt-4o`, `gpt-4o-mini` (recommended for cost)
 - **Anthropic**: `claude-3-5-sonnet-20241022`
 - **Google**: `gemini-2.0-flash-exp`
@@ -902,6 +1217,7 @@ agent = Agent(task="...", llm=llm, browser=browser, tools=tools)
 <summary><b>How do I manage AWI credentials?</b></summary>
 
 View stored AWI credentials:
+
 ```bash
 python -m browser_use.cli_agent_registry list
 ```
@@ -929,11 +1245,13 @@ Credentials are stored in `~/.config/browseruse/config.json` and automatically r
 This enhanced version is built on top of [browser-use](https://github.com/browser-use/browser-use) by Magnus Rødseth and Gregor Gysi.
 
 **Original browser-use:**
+
 - Repository: [github.com/browser-use/browser-use](https://github.com/browser-use/browser-use)
 - Documentation: [docs.browser-use.com](https://docs.browser-use.com)
 - License: MIT
 
 **Enhancements in this fork:**
+
 - AWI (Agent Web Interface) protocol implementation
 - Permission-based security workflows
 - Agent credential registry

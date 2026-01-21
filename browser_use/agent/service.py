@@ -81,6 +81,7 @@ from browser_use.utils import (
 
 # AWI Mode imports
 from browser_use.awi import AWIDiscovery, AWIManager, AWIPermissionDialog
+from browser_use.awi.model_detection import detect_model_capability, should_use_quick_reference
 
 logger = logging.getLogger(__name__)
 
@@ -986,6 +987,64 @@ class Agent(Generic[Context, AgentStructuredOutput]):
 		if self.state.paused:
 			raise InterruptedError
 
+	async def _check_action_loop(self, max_repeats: int = 3) -> None:
+		"""
+		Detect and prevent action loops in AWI mode.
+
+		If the same action sequence repeats max_repeats times, auto-complete the task.
+		This is a safety net to prevent infinite loops when the LLM fails to recognize
+		task completion despite system prompt guidance and metadata hints.
+
+		Args:
+			max_repeats: Number of identical action sequences before triggering auto-completion
+		"""
+		if not self.state.last_model_output or not self.state.last_model_output.action:
+			return
+
+		# Generate hash of current action sequence
+		import hashlib
+		import json
+
+		# Serialize actions to stable string representation
+		action_str = json.dumps(
+			[a.model_dump() for a in self.state.last_model_output.action],
+			sort_keys=True
+		)
+		action_hash = hashlib.md5(action_str.encode()).hexdigest()
+
+		# Add to recent hashes (keep last 10 for analysis)
+		self.state.recent_action_hashes.append(action_hash)
+		if len(self.state.recent_action_hashes) > 10:
+			self.state.recent_action_hashes.pop(0)
+
+		# Check for repeated patterns (need at least max_repeats samples)
+		if len(self.state.recent_action_hashes) >= max_repeats:
+			recent = self.state.recent_action_hashes[-max_repeats:]
+
+			# All hashes identical = perfect loop
+			if len(set(recent)) == 1:
+				self.logger.warning(f'🔁 Loop detected: Same actions repeated {max_repeats} times')
+				self.logger.warning(f'   Action hash: {action_hash}')
+				self.logger.warning(f'   Auto-completing task to prevent infinite loop')
+
+				# Auto-complete with done action
+				from browser_use.agent.views import ActionResult
+
+				self.state.last_result = [ActionResult(
+					is_done=True,
+					success=True,
+					extracted_content=(
+						'Task auto-completed due to repeated action loop detection.\n\n'
+						'The agent repeated the same action sequence 3 times without progress. '
+						'This typically indicates the task requirements have been met but the agent '
+						'failed to recognize completion.\n\n'
+						'Please review the agent history to verify the task was completed correctly.'
+					),
+					long_term_memory='Loop detected - task completed automatically as safety fallback'
+				)]
+
+				self.logger.info('✅ Task marked as complete (loop detection fallback)')
+
 	@observe(name='agent.step', ignore_output=True, ignore_input=True)
 	@time_execution_async('--step')
 	async def step(self, step_info: AgentStepInfo | None = None) -> None:
@@ -1196,6 +1255,10 @@ class Agent(Generic[Context, AgentStructuredOutput]):
 		if self.state.consecutive_failures > 0:
 			self.state.consecutive_failures = 0
 			self.logger.debug(f'🔄 Step {self.state.n_steps}: Consecutive failures reset to: {self.state.consecutive_failures}')
+
+		# Loop detection for AWI mode (prevent infinite loops)
+		if await self._is_awi_available():
+			await self._check_action_loop()
 
 		# Log completion results
 		if self.state.last_result and len(self.state.last_result) > 0 and self.state.last_result[-1].is_done:
@@ -2302,6 +2365,13 @@ class Agent(Generic[Context, AgentStructuredOutput]):
 		allowed_ops = capabilities.get('allowed_operations', [])
 		endpoints = self._awi_manifest.get('endpoints', {})
 		base_url = endpoints.get('base', '')
+		operations = self._awi_manifest.get('operations', {})
+		quick_reference = self._awi_manifest.get('llm_quick_reference', {})
+
+		# Detect model capability to decide which format to show
+		model_name = self.llm.model_name if hasattr(self.llm, 'model_name') else None
+		model_capability = detect_model_capability(model_name)
+		use_quick_ref = should_use_quick_reference(model_capability) and bool(quick_reference)
 
 		message = f"""
 ╔══════════════════════════════════════════════════════════════════════════════╗
@@ -2387,18 +2457,178 @@ Task: "Add a comment 'Great post!' to post 123"
     body={{"content": "Great post!", "authorName": "Agent"}}  ← Includes required fields!
   )
 
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                   💡 EASIER APPROACH: TWO-PHASE MODE                         ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+If constructing the full body dict is difficult, use the SIMPLER approach:
+
+Instead of:  body={{"content": "Great post!", "authorName": "Agent"}}
+
+Use:  field_values=[
+        {{"field_name": "content", "value": "Great post!"}},
+        {{"field_name": "authorName", "value": "Agent"}}
+      ]
+
+🎯 Benefits:
+  • Simpler structure - just list field names and values
+  • No need to construct nested dict syntax
+  • System automatically builds the proper body for you
+  • Works great when you're unsure about exact JSON structure
+
+Example - Creating a comment (two-phase approach):
+  awi_execute(
+    operation="create",
+    endpoint="/posts/123/comments",
+    method="POST",
+    field_values=[
+      {{"field_name": "content", "value": "Great post!"}},
+      {{"field_name": "authorName", "value": "Agent"}}
+    ]
+  )
+
+The system will automatically construct: {{"content": "Great post!", "authorName": "Agent"}}
+
+Use whichever approach is easier for you! Both work the same way.
+"""
+
+		# Add API operations schema - use quick reference if available and appropriate
+		if use_quick_ref:
+			# Show simplified quick reference for weaker models
+			message += """
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                       🚀 QUICK REFERENCE GUIDE                               ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+⚠️  This simplified guide shows the most common operations and their requirements.
+
+"""
+			# Show common operations from quick reference
+			common_ops = quick_reference.get('common_operations', [])
+			if common_ops:
+				message += "📋 Common Operations:\n\n"
+				for op in common_ops:
+					task = op.get('task', 'Unknown task')
+					endpoint = op.get('endpoint', '')
+					required_body = op.get('required_body', {})
+					optional_body = op.get('optional_body', {})
+
+					message += f"• {task}\n"
+					message += f"  Endpoint: {endpoint}\n"
+					if required_body:
+						message += f"  Required fields: {list(required_body.keys())}\n"
+					if optional_body:
+						message += f"  Optional fields: {list(optional_body.keys())}\n"
+					message += "\n"
+
+			# Show field requirements summary
+			field_summary = quick_reference.get('field_requirements_summary', {})
+			if field_summary:
+				message += "\n📦 Field Requirements by Operation:\n\n"
+				for op_key, requirements in field_summary.items():
+					required = requirements.get('required', [])
+					optional = requirements.get('optional', [])
+					message += f"• {op_key}\n"
+					if required:
+						message += f"  ✅ Required: {required}\n"
+					if optional:
+						message += f"  📎 Optional: {optional}\n"
+					message += "\n"
+
+		elif operations:
+			# Show full operations schema for premium models
+			message += """
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                       📋 API OPERATIONS SCHEMA                               ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+⚠️  Use this schema to know which fields to include (works for both body and field_values).
+Each operation specifies REQUIRED and OPTIONAL fields.
+
+"""
+			# Format operations schema
+			for resource, ops in operations.items():
+				message += f"\n📦 {resource.upper()} Operations:\n"
+				for op_name, op_spec in ops.items():
+					if not isinstance(op_spec, dict):
+						continue
+
+					message += f"\n  • {op_name.upper()}: {op_spec.get('method', 'N/A')} {op_spec.get('endpoint', 'N/A')}\n"
+					message += f"    Description: {op_spec.get('description', 'No description')}\n"
+
+					# Show required fields (most important!)
+					required = op_spec.get('required_fields', [])
+					if required:
+						message += f"    ✅ REQUIRED: {required}\n"
+
+					# Show optional fields
+					optional = op_spec.get('optional_fields', [])
+					if optional:
+						message += f"    📎 OPTIONAL: {optional}\n"
+
+					# Show validation rules if available
+					validation = op_spec.get('validation', {})
+					if validation:
+						message += f"    📏 Validation:\n"
+						for field, rule in validation.items():
+							message += f"       - {field}: {rule}\n"
+
+					# Show parameters for GET requests
+					params = op_spec.get('parameters', [])
+					if params:
+						message += f"    🔧 Parameters: {params}\n"
+
+		message += """
+
 🎯 Your Approach:
 1. Analyze the task requirements
 2. Decide which operations to use from the available list
 3. Construct appropriate endpoints based on the base URL and task
-4. **Determine what data to include in the body based on the operation**
-5. Execute awi_execute with ALL parameters properly filled
-6. Use the API responses to complete the task
+4. **Look up the required_fields in the API schema above**
+5. **Construct the body dict with ALL required fields**
+6. Execute awi_execute with all parameters properly filled
+7. Use the API responses to complete the task
 
 The AWI provides structured, semantic JSON responses.
 YOU decide all parameters based on the task - the system is completely generic.
 """
-		return message
+
+		# Check if last action suggests completion
+		completion_reminder = ""
+		if self.state.last_result and len(self.state.last_result) > 0:
+			last_result = self.state.last_result[-1]
+			if last_result.metadata and isinstance(last_result.metadata, dict):
+				suggests_completion = last_result.metadata.get('suggests_completion', False)
+				completion_reason = last_result.metadata.get('completion_reason', '')
+
+				if suggests_completion:
+					completion_reminder = f"""
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    ⚠️  TASK COMPLETION CHECK REQUIRED ⚠️                      ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+🔔 IMPORTANT: Your last AWI operation suggests the task may be complete.
+
+Last Operation Result: {completion_reason}
+
+⚠️  YOU MUST EVALUATE IF THE TASK IS COMPLETE:
+
+1. Review the USER REQUEST - what was asked for?
+2. Check your agent history - have you completed all required operations?
+3. If ALL requirements are met → Call the 'done' action NOW with success=True
+4. If there's more work → Continue with next operation
+
+❌ DO NOT repeat the same operations if they already succeeded
+✅ If task is done, call done() immediately - it will NOT auto-complete
+
+Remember: AWI operations do NOT automatically complete the task.
+YOU must explicitly call 'done' when finished.
+"""
+
+		return message + completion_reminder
 
 	async def _is_awi_available(self) -> bool:
 		"""Check if AWI mode is available and active."""
@@ -2445,9 +2675,18 @@ YOU decide all parameters based on the task - the system is completely generic.
 		self.logger.info(f'🔍 AWI Mode: Checking for AWI at {url}')
 
 		try:
-			# Step 1: Discovery
+			# Step 1: Discovery with format parameter based on model capability
+			from browser_use.awi.model_detection import detect_model_capability, get_recommended_format
+
+			model_name = self.llm.model_name if hasattr(self.llm, 'model_name') else None
+			model_capability = detect_model_capability(model_name)
+			manifest_format = get_recommended_format(model_capability)
+
+			self.logger.info(f'   Model: {model_name} (capability: {model_capability.value})')
+			self.logger.info(f'   Requesting manifest format: {manifest_format}')
+
 			async with AWIDiscovery() as discovery:
-				manifest = await discovery.discover(url)
+				manifest = await discovery.discover(url, format=manifest_format)
 
 				if not manifest:
 					self.logger.info('No AWI found, using traditional DOM parsing')
@@ -2469,7 +2708,7 @@ YOU decide all parameters based on the task - the system is completely generic.
 				self.logger.info(f'   Sessions: {existing_cred.session_count}')
 
 				# Initialize AWI manager with existing credentials
-				self.awi_manager = AWIManager(manifest)
+				self.awi_manager = AWIManager(manifest, discovery_url=url)
 				await self.awi_manager.__aenter__()
 
 				# Set existing credentials (skip registration)
@@ -2500,7 +2739,7 @@ YOU decide all parameters based on the task - the system is completely generic.
 				return False
 
 			# Step 4: Register new agent
-			self.awi_manager = AWIManager(manifest)
+			self.awi_manager = AWIManager(manifest, discovery_url=url)
 			# Initialize the session (AWIManager expects to be used as context manager)
 			await self.awi_manager.__aenter__()
 

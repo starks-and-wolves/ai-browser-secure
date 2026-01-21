@@ -16,6 +16,11 @@ AWI (Agent Web Interface) enables AI agents to interact with websites through st
 - **[AGENT_REGISTRY.md](./AGENT_REGISTRY.md)** - Manage agent credentials and enable seamless reuse
 - **[TROUBLESHOOTING.md](./TROUBLESHOOTING.md)** - Solve common issues and handle rate limits
 
+### Advanced Topics: LLM Optimization
+- **[LLM_OPTIMIZATION.md](./LLM_OPTIMIZATION.md)** - Comprehensive guide for optimizing AWI manifests for different LLM capabilities
+- **[AWI_OPTIMIZATION_IMPLEMENTATION.md](./AWI_OPTIMIZATION_IMPLEMENTATION.md)** - Implementation details: model detection and adaptive manifest serving
+- **[TWO_PHASE_IMPLEMENTATION_SUMMARY.md](./TWO_PHASE_IMPLEMENTATION_SUMMARY.md)** - Simplified body construction for weak models
+
 ## Documentation Structure
 
 ### 1. [AWI Overview](./AWI_OVERVIEW.md)
@@ -64,6 +69,38 @@ AWI (Agent Web Interface) enables AI agents to interact with websites through st
 
 **Start here if:** You're encountering errors or unexpected behavior.
 
+### 5. [LLM Optimization Guide](./LLM_OPTIMIZATION.md)
+
+**What you'll learn:**
+- Optimizing AWI manifests for different model capabilities (GPT-4, GPT-3.5, weak models)
+- Token usage reduction strategies (99.5% savings possible)
+- Progressive disclosure and format parameters
+- llm_quick_reference implementation
+- Best practices for multi-tier model support
+
+**Start here if:** You want to optimize your AWI backend for different LLM capabilities or reduce token costs.
+
+### 6. [AWI Optimization Implementation](./AWI_OPTIMIZATION_IMPLEMENTATION.md)
+
+**What you'll learn:**
+- How browser-use detects model capabilities
+- Automatic manifest format selection
+- BodyConstructor quick reference prioritization
+- Context message adaptation for different models
+- Testing recommendations and backward compatibility
+
+**Start here if:** You want to understand how browser-use client implements model-aware optimization.
+
+### 7. [Two-Phase Body Construction](./TWO_PHASE_IMPLEMENTATION_SUMMARY.md)
+
+**What you'll learn:**
+- Simplified approach for constructing API request bodies
+- Why weak models struggle with body construction
+- field_values parameter usage
+- Test results and recommendations
+
+**Start here if:** You're working with weak models (gpt-5-nano, GPT-3.5) and encountering empty body issues.
+
 ## Key Concepts
 
 ### AWI Discovery
@@ -93,14 +130,19 @@ AWI backends enforce rate limits with reputation-based tiers:
 
 ## File Organization
 
-### Core Documentation (Read these)
+### Core Documentation
 ```
 docs/awi/
-├── README.md              # This file - documentation index
-├── AWI_OVERVIEW.md        # Architecture and concepts
-├── QUICKSTART.md          # Getting started guide
-├── AGENT_REGISTRY.md      # Credential management
-└── TROUBLESHOOTING.md     # Common issues and solutions
+├── README.md                              # This file - documentation index
+├── AWI_OVERVIEW.md                        # Architecture and concepts
+├── QUICKSTART.md                          # Getting started guide
+├── AGENT_REGISTRY.md                      # Credential management
+├── TROUBLESHOOTING.md                     # Common issues and solutions
+│
+└── Advanced Optimization:
+    ├── LLM_OPTIMIZATION.md                # Manifest optimization for different models
+    ├── AWI_OPTIMIZATION_IMPLEMENTATION.md # Client-side model detection
+    └── TWO_PHASE_IMPLEMENTATION_SUMMARY.md# Simplified body construction
 ```
 
 ### Implementation Files (Reference only)

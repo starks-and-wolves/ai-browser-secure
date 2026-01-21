@@ -17,16 +17,16 @@ Usage:
         all          - Run all three modes sequentially
 """
 
-# from dotenv import load_dotenv
 import asyncio
 import os
 import sys
 from pathlib import Path
 
-# project_root = Path(__file__).parent.absolute()
-# if str(project_root) not in sys.path:
-#     sys.path.insert(0, str(project_root))
-
+# IMPORTANT: Add project directory to Python path (fixes Windows import issues)
+# This ensures the local browser_use folder is found before any installed version
+project_root = Path(__file__).parent.absolute()
+if str(project_root) not in sys.path:
+	sys.path.insert(0, str(project_root))
 
 # Check for .env file
 env_file = Path('.env')
@@ -47,18 +47,32 @@ if not env_file.exists():
 
 # Import browser-use
 try:
-    from browser_use import Agent, Browser, BrowserProfile
+    from browser_use.agent.service import Agent
+    from browser_use import Browser, BrowserProfile
     from browser_use.llm import get_default_llm
 except ImportError:
     print("❌ browser-use not installed")
-    print("\nInstall with:")
-    print("  uv add browser-use && uv sync")
-    print("  # or")
-    print("  pip install browser-use")
+    print("\n⚠️  IMPORTANT: You must install the LOCAL enhanced version, not PyPI!")
+    print("\nCorrect installation steps:")
+    print("  1. Activate virtual environment:")
+    print("     source .venv/bin/activate   # macOS/Linux")
+    print("     .venv\\Scripts\\Activate.ps1  # Windows PowerShell")
+    print("\n  2. Install local package in editable mode:")
+    print("     uv pip install -e .")
+    print("     # or use pip directly:")
+    print("     pip install -e .")
+    print("\n  3. Verify installation:")
+    print("     python -c \"import browser_use; print('✅ Installed')\"")
+    print("\nFor more help, see README.md or docs/awi/TROUBLESHOOTING.md")
     sys.exit(1)
 
 # Check for API keys
-# load_dotenv()
+try:
+    from dotenv import load_dotenv  # type: ignore[reportMissingImports]
+    load_dotenv()
+except ModuleNotFoundError:
+    print("⚠️  python-dotenv not installed; skipping .env loading.")
+    print("   Install with: uv add python-dotenv && uv sync")
 
 has_browser_use_key = bool(os.getenv('BROWSER_USE_API_KEY'))
 has_openai_key = bool(os.getenv('OPENAI_API_KEY'))
@@ -94,7 +108,7 @@ async def test_traditional_mode():
         print(f"❌ Failed to get LLM: {e}")
         return
 
-    agent = Agent(
+    agent = Agent(  # type: ignore[reportGeneralTypeIssues]
         task="Go to github.com/browser-use/browser-use and find the number of stars",
         llm=llm,
         browser=browser,
@@ -103,7 +117,7 @@ async def test_traditional_mode():
 
     print("\n▶️  Starting agent...")
     try:
-        history = await agent.run()
+        history = await agent.run()  # type: ignore[reportGeneralTypeIssues]
         print("\n✅ Traditional mode test completed!")
         print(f"   Steps taken: {len(history.history)}")
         return history
@@ -140,7 +154,7 @@ async def test_permission_mode():
         print(f"❌ Failed to get LLM: {e}")
         return
 
-    agent = Agent(
+    agent = Agent(  # type: ignore[reportGeneralTypeIssues]
         task="Go to github.com/browser-use/browser-use and find the number of stars",
         llm=llm,
         browser=browser,
@@ -149,7 +163,7 @@ async def test_permission_mode():
 
     print("\n▶️  Starting agent...")
     try:
-        history = await agent.run()
+        history = await agent.run()  # type: ignore[reportGeneralTypeIssues]
         print("\n✅ Permission mode test completed!")
         print(f"   Steps taken: {len(history.history)}")
         print("\n📊 Delta from traditional mode:")
@@ -197,7 +211,7 @@ async def test_permission_mode_advanced():
         print(f"❌ Failed to get LLM: {e}")
         return
 
-    agent = Agent(
+    agent = Agent(  # type: ignore[reportGeneralTypeIssues]
         task="Try to visit these sites and tell me which ones you could access: google.com, github.com, facebook.com, and example.com",
         llm=llm,
         browser=browser,
@@ -212,7 +226,7 @@ async def test_permission_mode_advanced():
     print("   ⚠️  example.com - Requires approval (not in pre-approved list)")
 
     try:
-        history = await agent.run()
+        history = await agent.run()  # type: ignore[reportGeneralTypeIssues]
         print("\n✅ Advanced permission mode test completed!")
         print(f"   Steps taken: {len(history.history)}")
         print("\n🎯 Key Security Features Demonstrated:")
@@ -227,6 +241,94 @@ async def test_permission_mode_advanced():
         await browser.kill()
 
 
+async def check_awi_backend_with_retry(url: str, max_retries: int = 12, retry_delay: int = 10):
+    """
+    Check if AWI backend is available, with retry logic for sleeping backends.
+
+    Args:
+        url: Backend URL to check
+        max_retries: Maximum number of retry attempts (default: 12 = 2 minutes)
+        retry_delay: Seconds to wait between retries (default: 10 seconds)
+
+    Returns:
+        tuple: (manifest_dict, success_bool)
+    """
+    try:
+        import aiohttp  # type: ignore[reportMissingImports]
+    except ModuleNotFoundError:
+        aiohttp = None
+    import time
+
+    print(f"🔍 Checking AWI backend at {url}...")
+
+    start_time = time.time()
+    is_sleeping = False
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            timeout_seconds = 15 if attempt == 1 else 30  # Longer timeout after first attempt
+            if aiohttp is None:
+                print('❌ aiohttp not installed; cannot check AWI backend')
+                return None, False
+            async with aiohttp.ClientSession() as session:
+                async with session.get(
+                    f'{url}/.well-known/llm-text',
+                    timeout=aiohttp.ClientTimeout(total=timeout_seconds)
+                ) as response:
+                    if response.status == 200:
+                        manifest = await response.json()
+                        elapsed = time.time() - start_time
+
+                        if is_sleeping:
+                            print(f"\n✅ Backend woke up! (took {elapsed:.1f} seconds)")
+                        else:
+                            print(f"✅ Backend is online!")
+
+                        print(f"   AWI Name: {manifest.get('awi', {}).get('name', 'Unknown')}")
+                        print(f"   Version: {manifest.get('awi', {}).get('version', 'Unknown')}")
+                        return manifest, True
+                    else:
+                        print(f"   ⚠️  Backend returned status {response.status}")
+                        return None, False
+
+        except asyncio.TimeoutError:
+            elapsed = time.time() - start_time
+
+            if attempt == 1:
+                print(f"   ⏰ Backend appears to be sleeping (timeout after {timeout_seconds}s)")
+                print(f"   🔄 Waking up backend... (this may take up to 90 seconds)")
+                is_sleeping = True
+
+            if attempt < max_retries:
+                remaining_time = (max_retries - attempt) * retry_delay
+                print(f"   ⏳ Retry {attempt}/{max_retries} - Waiting {retry_delay}s... ({remaining_time}s remaining)")
+                await asyncio.sleep(retry_delay)
+            else:
+                print(f"\n   ❌ Backend did not respond after {elapsed:.0f} seconds")
+                return None, False
+
+        except Exception as e:
+            error_msg = str(e)
+            if 'Cannot connect' in error_msg or 'Connection' in error_msg:
+                if attempt == 1:
+                    print(f"   ⏰ Connection refused - backend is sleeping")
+                    print(f"   🔄 Waking up backend... (this may take up to 90 seconds)")
+                    is_sleeping = True
+
+                if attempt < max_retries:
+                    remaining_time = (max_retries - attempt) * retry_delay
+                    print(f"   ⏳ Retry {attempt}/{max_retries} - Waiting {retry_delay}s... ({remaining_time}s remaining)")
+                    await asyncio.sleep(retry_delay)
+                else:
+                    print(f"\n   ❌ Could not connect after {max_retries} attempts")
+                    return None, False
+            else:
+                print(f"   ❌ Unexpected error: {error_msg[:80]}")
+                return None, False
+
+    return None, False
+
+
 async def test_awi_mode():
     """Test AWI mode with structured API calls."""
     print_section("Test 3: AWI Mode", "⚡")
@@ -234,47 +336,34 @@ async def test_awi_mode():
     print("Mode: Structured API calls instead of DOM parsing")
     print("\n🌐 Using deployed AWI backend at:")
     print("   https://ai-browser-security.onrender.com")
+    print("\n💡 Note: If the backend is sleeping, it will automatically wake up.")
+    print("   This may take up to 90 seconds on the first request.\n")
 
     # Use deployed backend
-    awi_urls = [
-        'https://ai-browser-security.onrender.com',
-    ]
+    awi_url = 'https://ai-browser-security.onrender.com'
 
-    awi_url = None
-    import aiohttp
+    # Check backend with retry logic (up to 2 minutes)
+    manifest, success = await check_awi_backend_with_retry(
+        awi_url,
+        max_retries=12,  # 12 attempts * 10 seconds = 2 minutes max
+        retry_delay=10
+    )
 
-    for url in awi_urls:
-        try:
-            print(f"\n🔍 Checking AWI backend at {url}...")
-            async with aiohttp.ClientSession() as session:
-                async with session.get(f'{url}/.well-known/llm-text', timeout=aiohttp.ClientTimeout(total=5)) as response:
-                    if response.status == 200:
-                        manifest = await response.json()
-                        awi_url = url
-                        print(
-                            f"✅ AWI backend detected: {manifest.get('awi', {}).get('name', 'Unknown')}")
-                        print(
-                            f"   Version: {manifest.get('awi', {}).get('version', 'Unknown')}")
-                        break
-                    else:
-                        print(
-                            f"   ⚠️  Backend returned status {response.status}")
-        except Exception as e:
-            print(f"   ⚠️  Not available: {str(e)[:50]}")
-
-    if not awi_url:
-        print("\n❌ No AWI backend available")
+    if not success or not manifest:
+        print("\n❌ AWI backend is not available")
         print("\n" + "=" * 70)
-        print("💡 AWI BACKEND OPTIONS")
+        print("💡 TROUBLESHOOTING")
         print("=" * 70)
-        print("\n🌐 AWI Backend Status:")
-        print("   The deployed backend at https://ai-browser-security.onrender.com")
-        print("   should be available. If it's not responding:")
-        print("   • It may be in sleep mode (first request takes ~1 minute to wake)")
-        print("   • Try running the test again in a minute")
-        print("   • Check status at: https://ai-browser-security.onrender.com/health")
-        print("\n💡 For local development:")
-        print("   See TESTING.md for instructions on setting up a local AWI backend")
+        print("\n🔧 The backend did not respond after multiple retry attempts.")
+        print("\n   Possible issues:")
+        print("   • Backend service may be down (check https://ai-browser-security.onrender.com)")
+        print("   • Network connectivity issues")
+        print("   • Firewall blocking the connection")
+        print("\n   Next steps:")
+        print("   • Check your internet connection")
+        print("   • Try accessing the backend URL in a browser")
+        print("   • Wait a few minutes and try again")
+        print("   • Check TESTING.md for local backend setup")
         print("\n" + "=" * 70)
         return None
 
@@ -287,18 +376,18 @@ async def test_awi_mode():
         print(f"❌ Failed to get LLM: {e}")
         return
 
-    agent = Agent(
-        task=f"Go to {awi_url} and list the top 3 blog posts, then add a comment to the first one",
+    agent = Agent(  # type: ignore[reportGeneralTypeIssues]
+        task=f"Go to {awi_url} and list the top 3 blog posts, then add a comment 'Great post!' to the first one. After adding the comment, end the process",
         llm=llm,
         browser=browser,
         awi_mode=True,
-        max_steps=10,
+        max_steps=8,  # Reduced to catch infinite loops faster
     )
 
     print("\n▶️  Starting agent...")
     print("    (First run will show permission dialog)")
     try:
-        history = await agent.run()
+        history = await agent.run()  # type: ignore[reportGeneralTypeIssues]
         print("\n✅ AWI mode test completed!")
         print(f"   Steps taken: {len(history.history)}")
 
@@ -343,8 +432,7 @@ async def main():
 
     try:
         llm = get_default_llm()
-        print(
-            f"   ✅ Using LLM: {llm.model_name if hasattr(llm, 'model_name') else llm.__class__.__name__}")
+        print(f"   ✅ Using LLM: {llm.model_name if hasattr(llm, 'model_name') else llm.__class__.__name__}")
     except Exception as e:
         print(f"   ❌ LLM configuration error: {e}")
         sys.exit(1)

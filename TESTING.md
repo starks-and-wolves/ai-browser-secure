@@ -147,9 +147,11 @@ python test_browser_use.py awi
 
 **Notes:**
 - ✅ No Redis or MongoDB needed on your machine
-- ⚠️ First request may take ~1 minute if backend is in sleep mode
+- 🔄 **Automatic wake-up**: If backend is sleeping, test will automatically retry for up to 2 minutes
+- ⏰ First request takes ~60-90 seconds if backend is asleep (subsequent requests are instant)
 - 📊 After first registration, credentials are saved for reuse
 - 🔐 Credentials stored in `~/.config/browseruse/config.json`
+- 💡 You'll see retry progress with countdown timers
 
 ---
 
@@ -406,6 +408,32 @@ uv pip install -e .
 # If you accidentally installed from PyPI, uninstall first:
 uv pip uninstall browser-use
 uv pip install -e .
+```
+
+**Windows-Specific Solution:**
+
+If the editable install doesn't work on Windows, add this to the top of your scripts:
+
+```python
+import sys
+from pathlib import Path
+
+# Add project directory to Python path
+project_root = Path(__file__).parent.absolute()
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
+# Now imports will work
+from browser_use import Agent, Browser
+```
+
+This fix is already applied in `test_browser_use.py` and `example_windows.py`.
+
+**Diagnostic Tool:**
+
+Run the diagnostic script to identify the exact issue:
+```powershell
+python diagnose_windows.py
 ```
 
 ### Issue: "Chromium not found"

@@ -23,7 +23,8 @@ class AWIManager:
     def __init__(
         self,
         manifest: Dict[str, Any],
-        session: Optional[aiohttp.ClientSession] = None
+        session: Optional[aiohttp.ClientSession] = None,
+        discovery_url: Optional[str] = None
     ):
         """
         Initialize AWI manager with manifest.
@@ -31,6 +32,7 @@ class AWIManager:
         Args:
             manifest: AWI manifest from discovery
             session: Optional aiohttp session (will create one if not provided)
+            discovery_url: Optional URL where manifest was discovered (used as fallback base_url)
         """
         self.manifest = manifest
         self.session = session
@@ -39,6 +41,15 @@ class AWIManager:
         # Extract endpoint information
         self.endpoints = manifest.get('endpoints', {})
         self.base_url = self.endpoints.get('base', '')
+
+        # Fallback: use discovery URL if base_url is not in manifest
+        if not self.base_url and discovery_url:
+            # Extract base URL from discovery URL (remove path)
+            from urllib.parse import urlparse
+            parsed = urlparse(discovery_url)
+            self.base_url = f"{parsed.scheme}://{parsed.netloc}"
+            logger.info(f"Using discovery URL as base: {self.base_url}")
+
         self.auth_info = manifest.get('authentication', {})
 
         # Agent registration info

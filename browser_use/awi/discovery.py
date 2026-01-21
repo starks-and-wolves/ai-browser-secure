@@ -8,9 +8,16 @@ Discovers AWI capabilities from websites using multiple methods:
 """
 
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, TYPE_CHECKING, cast
 from urllib.parse import urljoin
-import aiohttp
+
+if TYPE_CHECKING:
+    import aiohttp
+else:
+    try:
+        import aiohttp  # type: ignore
+    except ModuleNotFoundError:  # pragma: no cover
+        aiohttp = None  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -18,30 +25,42 @@ logger = logging.getLogger(__name__)
 class AWIDiscovery:
     """Discovers and parses AWI manifests from websites."""
 
-    def __init__(self, session: Optional[aiohttp.ClientSession] = None):
+    def __init__(self, session: Optional['aiohttp.ClientSession'] = None):
         self.session = session
         self._own_session = session is None
 
+    def _ensure_session(self) -> 'aiohttp.ClientSession':
+        if aiohttp is None:
+            raise ModuleNotFoundError('aiohttp is required for AWI discovery')
+        if self.session is None:
+            self.session = aiohttp.ClientSession()
+            self._own_session = True
+        return self.session
+
     async def __aenter__(self):
         if self._own_session:
-            self.session = aiohttp.ClientSession()
+            self._ensure_session()
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         if self._own_session and self.session:
             await self.session.close()
 
-    async def discover(self, url: str) -> Optional[Dict[str, Any]]:
+    async def discover(self, url: str, format: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """
         Discover AWI manifest from a URL using multiple methods.
 
         Args:
             url: Base URL to check for AWI
+            format: Optional format parameter (summary/enhanced/full) for manifest
 
         Returns:
             AWI manifest dictionary or None if not found
         """
-        logger.info(f"🔍 Discovering AWI at {url}...")
+        if format:
+            logger.info(f"🔍 Discovering AWI at {url} (format={format})...")
+        else:
+            logger.info(f"🔍 Discovering AWI at {url}...")
 
         # Normalize the discovery URL (remove trailing slashes, ensure scheme)
         discovery_url = url.rstrip('/')
@@ -49,19 +68,19 @@ class AWIDiscovery:
             discovery_url = f'https://{discovery_url}'
 
         # Method 1: Check HTTP headers
-        manifest = await self._discover_via_headers(discovery_url)
+        manifest = await self._discover_via_headers(discovery_url, format)
         if manifest:
             logger.info("✅ AWI discovered via HTTP headers")
             return self._normalize_manifest_urls(manifest, discovery_url)
 
         # Method 2: Try well-known URI
-        manifest = await self._discover_via_well_known(discovery_url)
+        manifest = await self._discover_via_well_known(discovery_url, format)
         if manifest:
             logger.info("✅ AWI discovered via .well-known/llm-text")
             return self._normalize_manifest_urls(manifest, discovery_url)
 
         # Method 3: Try capabilities endpoint
-        manifest = await self._discover_via_capabilities(discovery_url)
+        manifest = await self._discover_via_capabilities(discovery_url, format)
         if manifest:
             logger.info("✅ AWI discovered via capabilities endpoint")
             return self._normalize_manifest_urls(manifest, discovery_url)
@@ -69,10 +88,11 @@ class AWIDiscovery:
         logger.warning(f"❌ No AWI found at {url}")
         return None
 
-    async def _discover_via_headers(self, url: str) -> Optional[Dict[str, Any]]:
+    async def _discover_via_headers(self, url: str, format: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """Discover AWI via HTTP response headers."""
         try:
-            async with self.session.head(url, allow_redirects=True) as response:
+            session = self._ensure_session()
+            async with session.head(url, allow_redirects=True) as response:
                 # Check for AWI discovery header
                 awi_discovery = response.headers.get('X-AWI-Discovery')
                 if not awi_discovery:
@@ -80,21 +100,21 @@ class AWIDiscovery:
 
                 # Fetch the manifest from the discovery URL
                 manifest_url = urljoin(url, awi_discovery)
-                return await self._fetch_manifest(manifest_url)
+                return await self._fetch_manifest(manifest_url, format)
 
         except Exception as e:
             logger.debug(f"Header discovery failed: {e}")
             return None
 
-    async def _discover_via_well_known(self, url: str) -> Optional[Dict[str, Any]]:
+    async def _discover_via_well_known(self, url: str, format: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """Discover AWI via .well-known/llm-text URI."""
         well_known_url = urljoin(url, '/.well-known/llm-text')
-        return await self._fetch_manifest(well_known_url)
+        return await self._fetch_manifest(well_known_url, format)
 
-    async def _discover_via_capabilities(self, url: str) -> Optional[Dict[str, Any]]:
+    async def _discover_via_capabilities(self, url: str, format: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """Discover AWI via /api/agent/capabilities endpoint."""
         capabilities_url = urljoin(url, '/api/agent/capabilities')
-        manifest = await self._fetch_manifest(capabilities_url)
+        manifest = await self._fetch_manifest(capabilities_url, format)
 
         # If we get capabilities response, check if it has wellKnownUri for full manifest
         if manifest and 'capabilities' in manifest:
@@ -102,16 +122,23 @@ class AWIDiscovery:
             if 'discovery' in caps and 'wellKnownUri' in caps['discovery']:
                 # Fetch the full manifest from wellKnownUri
                 full_manifest_url = caps['discovery']['wellKnownUri']
-                full_manifest = await self._fetch_manifest(full_manifest_url)
+                full_manifest = await self._fetch_manifest(full_manifest_url, format)
                 if full_manifest:
                     return full_manifest
 
         return manifest
 
-    async def _fetch_manifest(self, url: str) -> Optional[Dict[str, Any]]:
+    async def _fetch_manifest(self, url: str, format: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """Fetch and parse AWI manifest from URL."""
         try:
-            async with self.session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as response:
+            if aiohttp is None:
+                raise ModuleNotFoundError('aiohttp is required for AWI discovery')
+            session = self._ensure_session()
+
+            # Add format parameter if specified
+            params = {'format': format} if format else None
+
+            async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=10)) as response:
                 if response.status == 200:
                     # Handle both application/json and other content types
                     # Some servers serve .well-known files as application/octet-stream
@@ -187,8 +214,7 @@ class AWIDiscovery:
                 for pattern in localhost_patterns:
                     if re.match(pattern, obj):
                         # Replace localhost with actual domain
-                        logger.debug(
-                            f"Replacing localhost URL: {obj} -> {actual_base}...")
+                        logger.debug(f"Replacing localhost URL: {obj} -> {actual_base}...")
                         # Replace the host part but keep the path
                         obj = re.sub(pattern, actual_base, obj)
                 return obj
@@ -202,10 +228,9 @@ class AWIDiscovery:
 
         if before_str != after_str:
             localhost_count = before_str.count('localhost')
-            logger.info(
-                f"🔧 Normalized {localhost_count} localhost URLs to {actual_base}")
+            logger.info(f"🔧 Normalized {localhost_count} localhost URLs to {actual_base}")
 
-        return after_normalized
+        return cast(Dict[str, Any], after_normalized)
 
     def extract_capabilities(self, manifest: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -228,19 +253,13 @@ class AWIDiscovery:
             cap_section = manifest
 
         # Extract capability directives
-        capabilities['allowed_operations'] = cap_section.get(
-            'allowed_operations', [])
-        capabilities['disallowed_operations'] = cap_section.get(
-            'disallowed_operations', [])
-        capabilities['security_features'] = cap_section.get(
-            'security_features', [])
+        capabilities['allowed_operations'] = cap_section.get('allowed_operations', [])
+        capabilities['disallowed_operations'] = cap_section.get('disallowed_operations', [])
+        capabilities['security_features'] = cap_section.get('security_features', [])
         capabilities['rate_limits'] = cap_section.get('rate_limits', {})
-        capabilities['confirmation_required'] = cap_section.get(
-            'confirmation_required', [])
-        capabilities['response_features'] = cap_section.get(
-            'response_features', [])
-        capabilities['session_management'] = cap_section.get(
-            'session_management', [])
+        capabilities['confirmation_required'] = cap_section.get('confirmation_required', [])
+        capabilities['response_features'] = cap_section.get('response_features', [])
+        capabilities['session_management'] = cap_section.get('session_management', [])
 
         return capabilities
 
@@ -300,10 +319,8 @@ class AWIDiscovery:
 
         summary = []
         summary.append("🎯 AWI Discovered")
-        summary.append(
-            f"   Name: {manifest.get('awi', {}).get('name', 'Unknown')}")
-        summary.append(
-            f"   Version: {manifest.get('awi', {}).get('version', 'Unknown')}")
+        summary.append(f"   Name: {manifest.get('awi', {}).get('name', 'Unknown')}")
+        summary.append(f"   Version: {manifest.get('awi', {}).get('version', 'Unknown')}")
 
         summary.append("\n✅ Allowed Operations:")
         for op in capabilities.get('allowed_operations', [])[:5]:
