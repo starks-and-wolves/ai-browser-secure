@@ -38,51 +38,103 @@
 
 </br>
 
-🌤️ Want to skip the setup? Use our <b>[cloud](https://cloud.browser-use.com)</b> for faster, scalable, stealth-enabled browser automation!
+# 🚀 Enhanced Browser-Use with AWI Support
 
-# 🤖 LLM Quickstart
+This is an **enhanced version** of browser-use that includes:
+- ✨ **AWI (Agent Web Interface)** mode for 500x faster API-based automation
+- 🛡️ **Permission mode** with user approval workflows and domain policies
+- 🔒 **Enhanced security** features for safe agent automation
+- 📊 **Session management** and credential persistence
 
-1. Direct your favorite coding agent (Cursor, Claude Code, etc) to [Agents.md](https://docs.browser-use.com/llms-full.txt)
-2. Prompt away!
+> **Note:** This is a modified version built on top of the official browser-use library. For the official package, visit [browser-use/browser-use](https://github.com/browser-use/browser-use).
 
-<br/>
+## 📑 Table of Contents
 
-# 👋 Human Quickstart
+- [Quick Start](#-quick-start)
+- [Understanding the Enhanced Features](#-understanding-the-enhanced-features)
+  - [What is AWI?](#-what-is-awi-agent-web-interface)
+  - [What is Permission Mode?](#️-what-is-permission-mode)
+  - [Architecture Flow](#️-overall-architecture-flow)
+- [Three Modes of Operation](#-three-modes-of-operation)
+- [What's Included](#-whats-included)
+- [Running Tests](#-running-tests)
+- [Examples & Demos](#-examples--demos)
+- [Development & Contributing](#️-development--contributing)
+- [FAQ](#-faq)
+- [Troubleshooting](#-troubleshooting)
+- [Credits](#-credits--attribution)
 
-**1. Create environment with [uv](https://docs.astral.sh/uv/) (Python>=3.11):**
+---
+
+# 👋 Quick Start
+
+Follow these steps to run the enhanced version locally:
+
+**1. Clone the repository:**
 ```bash
-uv init
+git clone <repository-url>
+cd ai-browser-secure
 ```
 
-**2. Install Browser-Use package:**
+**2. Create and activate virtual environment:**
 ```bash
-#  We ship every day - use the latest version!
-uv add browser-use
-uv sync
+# Create virtual environment with Python 3.11+
+uv venv --python 3.11
+
+# Activate it
+source .venv/bin/activate  # macOS/Linux
+# .venv\Scripts\activate   # Windows
 ```
 
-**3. Get your API key from [Browser Use Cloud](https://cloud.browser-use.com/new-api-key) and add it to your `.env` file (new signups get $10 free credits):**
-```
-# .env
-BROWSER_USE_API_KEY=your-key
-```
-
-**4. Install Chromium browser:**
+**3. Install the enhanced version:**
 ```bash
-uvx browser-use install
+# Install local package in editable mode
+uv pip install -e .
+
+# Or with all optional dependencies
+uv pip install -e ".[all]"
 ```
 
-**5. Run your first agent:**
+**⚠️ Critical:** Never run `uv add browser-use` or `pip install browser-use` - this will install the original package from PyPI instead of this enhanced version!
+
+**4. Set up your API keys:**
+
+Create a `.env` file in the project root:
+```bash
+# Choose one of these LLM providers:
+OPENAI_API_KEY=your-openai-key
+# ANTHROPIC_API_KEY=your-anthropic-key
+# BROWSER_USE_API_KEY=your-browseruse-key
+
+# Optional: Default model
+DEFAULT_LLM_MODEL=gpt-4o
+```
+
+**5. Install Chromium browser:**
+```bash
+uv run browser-use install
+```
+
+**6. Run the test script:**
+```bash
+# Run all three modes (traditional, permission, AWI)
+python test_browser_use.py all
+
+# Or run individual modes
+python test_browser_use.py traditional
+python test_browser_use.py permission
+python test_browser_use.py awi
+```
+
+**7. Or run your own agent:**
 ```python
-from browser_use import Agent, Browser, ChatBrowserUse
+from browser_use import Agent, Browser
+from browser_use.llm import get_default_llm
 import asyncio
 
 async def example():
-    browser = Browser(
-        # use_cloud=True,  # Uncomment to use a stealth browser on Browser Use Cloud
-    )
-
-    llm = ChatBrowserUse()
+    browser = Browser(headless=False)
+    llm = get_default_llm()  # Uses API key from .env
 
     agent = Agent(
         task="Find the number of stars of the browser-use repo",
@@ -91,168 +143,806 @@ async def example():
     )
 
     history = await agent.run()
+    print(f"Task completed in {len(history.history)} steps!")
     return history
 
 if __name__ == "__main__":
-    history = asyncio.run(example())
+    asyncio.run(example())
 ```
 
-Check out the [library docs](https://docs.browser-use.com) and the [cloud docs](https://docs.cloud.browser-use.com) for more!
+---
 
-<br/>
+# 📚 Understanding the Enhanced Features
 
-# 🔥 Deploy on Sandboxes
+## 🌐 What is AWI (Agent Web Interface)?
 
-We handle agents, browsers, persistence, auth, cookies, and LLMs. The agent runs right next to the browser for minimal latency.
+**AWI** is a protocol that enables AI agents to interact with websites through **structured APIs** instead of traditional DOM parsing and browser automation.
+
+### The Problem with Traditional Automation
+
+Traditional browser automation requires:
+```python
+# Traditional approach - slow and fragile
+1. Navigate to page          # Load full HTML (~100KB)
+2. Parse DOM                  # Extract text from HTML (~100,000 tokens!)
+3. Find elements by XPath     # Brittle, breaks with UI changes
+4. Click/type/scroll          # Slow, requires visual rendering
+5. Wait for page changes      # Network delays, animations
+6. Parse DOM again            # Another ~100,000 tokens
+```
+
+**Problems:**
+- 🐌 **Slow**: Multiple page loads, DOM parsing, element searches
+- 💰 **Expensive**: 100,000+ tokens per page for LLM processing
+- 🔨 **Brittle**: Breaks when website HTML/CSS changes
+- 🎨 **UI-dependent**: Requires visual rendering, CSS, JavaScript
+
+### The AWI Solution
+
+AWI provides a **structured API** that websites expose specifically for AI agents:
 
 ```python
-from browser_use import Browser, sandbox, ChatBrowserUse
-from browser_use.agent.service import Agent
-import asyncio
-
-@sandbox()
-async def my_task(browser: Browser):
-    agent = Agent(task="Find the top HN post", browser=browser, llm=ChatBrowserUse())
-    await agent.run()
-
-# Just call it like any async function
-asyncio.run(my_task())
+# AWI approach - fast and reliable
+1. Discover AWI endpoint      # Read /.well-known/llm-text (~500 tokens)
+2. Register agent             # Get API key (~200 tokens)
+3. Make API call              # GET /api/posts (~200 tokens)
+4. Get structured response    # JSON with exact data needed
 ```
 
-See [Going to Production](https://docs.browser-use.com/production) for more details.
+**Benefits:**
+- ⚡ **500x faster**: ~500 tokens vs ~100,000 tokens
+- 💵 **99.5% cheaper**: Fewer tokens = lower LLM costs
+- 🎯 **Reliable**: Structured API doesn't change like HTML
+- 🔒 **Secure**: Explicit permissions, rate limits, audit logs
+- 📊 **Stateful**: Server-side session tracking
+
+### How AWI Works - Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         WEBSITE                                 │
+│                                                                 │
+│  ┌────────────────────────────────────────────────────────┐    │
+│  │  1. AWI Manifest (/.well-known/llm-text)               │    │
+│  │     • Name: "Blog API"                                 │    │
+│  │     • Version: 1.0                                     │    │
+│  │     • Endpoints: /posts, /comments, /search            │    │
+│  │     • Permissions: read, write, delete                 │    │
+│  │     • Rate limits: 300 req/min                         │    │
+│  │     • Security features: XSS protection, validation    │    │
+│  └─────────────────────┬──────────────────────────────────┘    │
+│                        │ HTTP GET                               │
+│                        ▼                                        │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │  2. Registration Endpoint (/api/agent/register)        │   │
+│  │     Input:  { name, permissions }                      │   │
+│  │     Output: { agent_id, api_key }                      │   │
+│  └─────────────────────┬───────────────────────────────────┘   │
+│                        │ HTTP POST                              │
+│                        ▼                                        │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │  3. API Endpoints (with authentication)                │   │
+│  │     GET  /api/agent/posts        - List posts          │   │
+│  │     GET  /api/agent/posts/{id}   - Get post            │   │
+│  │     POST /api/agent/posts        - Create post         │   │
+│  │     POST /api/agent/search       - Search content      │   │
+│  │                                                         │   │
+│  │  Headers: X-Agent-API-Key: agent_abc123...             │   │
+│  └─────────────────────┬───────────────────────────────────┘   │
+│                        │                                        │
+│  ┌─────────────────────▼───────────────────────────────────┐   │
+│  │  4. Session Management (Redis/MongoDB)                 │   │
+│  │     • Track agent actions                              │   │
+│  │     • Store session state                              │   │
+│  │     • Enforce rate limits                              │   │
+│  │     • Maintain trajectory history                      │   │
+│  └────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────┘
+                        ▲
+                        │ HTTP Requests
+                        │
+┌───────────────────────┴─────────────────────────────────────────┐
+│                   BROWSER-USE (CLIENT)                          │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │  AWI Discovery Module (browser_use/awi/discovery.py)    │   │
+│  │  • Checks /.well-known/llm-text                         │   │
+│  │  • Parses manifest                                      │   │
+│  └─────────────────────┬───────────────────────────────────┘   │
+│                        ▼                                        │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │  Permission Dialog (browser_use/awi/permission_dialog.py)│  │
+│  │  • Shows AWI info to user                              │   │
+│  │  • Gets user approval                                   │   │
+│  │  • Selects permissions                                  │   │
+│  └─────────────────────┬───────────────────────────────────┘   │
+│                        ▼                                        │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │  AWI Manager (browser_use/awi/manager.py)              │   │
+│  │  • Registers agent                                      │   │
+│  │  • Stores API key in memory                            │   │
+│  │  • Makes authenticated API calls                        │   │
+│  └─────────────────────┬───────────────────────────────────┘   │
+│                        ▼                                        │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │  Agent Registry (browser_use/agent_registry.py)        │   │
+│  │  • Saves credentials to disk                            │   │
+│  │  • Location: ~/.config/browseruse/config.json           │   │
+│  │  • Reuses credentials on subsequent runs                │   │
+│  └────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### AWI vs Traditional - Token Comparison
+
+| Task | Traditional DOM | AWI Mode | Savings |
+|------|----------------|----------|---------|
+| List 10 blog posts | ~100,000 tokens | ~200 tokens | **99.8%** |
+| Create a comment | ~150,000 tokens | ~300 tokens | **99.8%** |
+| Search content | ~200,000 tokens | ~250 tokens | **99.9%** |
+| Multi-step task (5 steps) | ~500,000 tokens | ~1,000 tokens | **99.8%** |
+
+**Real Cost Example (using GPT-4):**
+- Traditional: 500,000 tokens × $0.03/1K = **$15.00**
+- AWI Mode: 1,000 tokens × $0.03/1K = **$0.03**
+- **Savings: $14.97 (99.8%)**
+
+---
+
+## 🛡️ What is Permission Mode?
+
+**Permission Mode** adds a **security layer** that requires user approval before the agent performs sensitive actions.
+
+### Why Permission Mode?
+
+AI agents are powerful but can potentially:
+- 🌐 Navigate to malicious websites
+- 📝 Submit forms with sensitive data
+- 💳 Make purchases or transactions
+- 🗑️ Delete important content
+- 📧 Send emails or messages
+
+**Permission Mode** gives you control by asking for approval before these actions.
+
+### How Permission Mode Works
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     USER REQUEST                                │
+│  "Go to google.com and search for 'browser automation'"         │
+└─────────────────────┬───────────────────────────────────────────┘
+                      ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                LLM DECIDES ACTION                               │
+│  Action: navigate(url="https://google.com")                     │
+└─────────────────────┬───────────────────────────────────────────┘
+                      ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              SECURITY CHECKPOINT                                │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │  User Approval Watchdog                                 │   │
+│  │  • Checks: Is this domain allowed?                      │   │
+│  │  • Checks: Is this domain blocked?                      │   │
+│  │  • Checks: Does this need approval?                     │   │
+│  └─────────────────────┬───────────────────────────────────┘   │
+│                        │                                        │
+│         ┌──────────────┼──────────────┐                        │
+│         ▼              ▼              ▼                         │
+│   ✅ ALLOWED      ⚠️ NEEDS        ❌ BLOCKED                   │
+│   (auto-approve)  APPROVAL        (auto-deny)                  │
+│                        │                                        │
+│                        ▼                                        │
+│         ┌──────────────────────────────────┐                   │
+│         │  🟡 USER PROMPT 🟡              │                   │
+│         │                                  │                   │
+│         │  Action: Navigate to google.com  │                   │
+│         │  Risk: MEDIUM                    │                   │
+│         │  Domain: google.com              │                   │
+│         │                                  │                   │
+│         │  Approve? (yes/no/all-session):  │                   │
+│         └──────────────┬───────────────────┘                   │
+│                        │                                        │
+│         ┌──────────────┴──────────────┐                        │
+│         ▼                              ▼                        │
+│    👍 APPROVED                    👎 DENIED                    │
+│    Execute action                Block & try alternative        │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Permission Mode Features
+
+**1. Domain Whitelisting**
+```python
+BrowserProfile(
+    allowed_domains=['*.google.com', '*.github.com'],
+)
+# google.com → ✅ Auto-approved
+# github.com → ✅ Auto-approved
+# facebook.com → ⚠️ Needs approval
+```
+
+**2. Domain Blacklisting**
+```python
+BrowserProfile(
+    blocked_domains=['*.facebook.com', '*.tiktok.com'],
+)
+# facebook.com → ❌ Auto-denied
+# tiktok.com → ❌ Auto-denied
+```
+
+**3. User Approval Levels**
+```bash
+# Individual approval
+Approve? (yes/no): yes  # Just this one action
+
+# Session-wide approval
+Approve? (all-session): all-session  # All actions this session
+
+# Domain-wide approval
+Approve? (all-domain): all-domain  # All actions on google.com
+```
+
+**4. Detailed Approval Context**
+```
+🟡 SECURITY APPROVAL REQUIRED 🟡
+
+Action Type: NAVIGATION
+Target: https://example.com/login
+Risk Level: HIGH
+Reason: Navigating to authentication page
+
+Current Task: "Login to my account and check messages"
+Current Goal: Access the login page
+Why this step: Need to authenticate before accessing messages
+
+Approve? (yes/no/all-session/all-domain):
+```
+
+### Real-World Permission Mode Example
+
+Here's what the permission dialog looks like in practice when testing domain restrictions:
+
+<div align="center">
+<img src="docs/images/permission-mode-example.png" alt="Permission Mode Dialog Example" width="420"/>
+</div>
+
+In this example:
+- **Task**: Test accessibility of multiple domains (google.com, github.com, facebook.com, example.com)
+- **Current Action**: Agent attempting to navigate to facebook.com (blocked domain)
+- **Context Shown**:
+  - Step 2 of 100 in the task
+  - Current goal explanation
+  - Full reasoning for why this step is needed
+  - Action details (URL, domain, parameters)
+  - Planned next actions (navigate to facebook.com and example.com, wait 2 seconds)
+- **Approval Options**:
+  - ✅ **Allow This Action** - Approve just this navigation
+  - **Allow All (This Session)** - Auto-approve all similar actions for this session
+  - **Allow All (This Domain)** - Auto-approve all actions on facebook.com
+  - ❌ **Deny** - Block this action (agent will try alternative approach)
+  - **Auto-deny timer** - Automatically denies after 36 seconds if no response
+
+This visual approval system gives you complete visibility and control over what your agent does, making it safe to test tasks involving sensitive sites or actions.
+
+---
+
+## 🏗️ Overall Architecture Flow
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│                          USER                                            │
+│  "Go to GitHub and find the browser-use repo star count"                │
+└─────────────────────────────┬────────────────────────────────────────────┘
+                              │
+                              ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│                     BROWSER-USE AGENT                                    │
+│  ┌────────────────────────────────────────────────────────────────────┐ │
+│  │  1. Task Processing                                                │ │
+│  │     • Parse user intent                                            │ │
+│  │     • Detect URL in task                                           │ │
+│  │     • Check if AWI mode enabled                                    │ │
+│  └────────────────────┬───────────────────────────────────────────────┘ │
+│                       │                                                  │
+│                       ▼                                                  │
+│  ┌─────────────────────────────────────────────────────────────────┐   │
+│  │  2. Mode Selection                                              │   │
+│  └─────────┬───────────────────────────────┬───────────────────────┘   │
+│            │                               │                           │
+│    ┌───────▼────────┐            ┌────────▼────────┐                  │
+│    │  AWI Mode?     │            │ Permission Mode?│                  │
+│    │  Check URL     │            │ Check Profile   │                  │
+│    └───────┬────────┘            └────────┬────────┘                  │
+│            │                               │                           │
+│     ┌──────┴──────┐                 ┌─────┴─────┐                     │
+│     │             │                 │           │                     │
+│     ▼             ▼                 ▼           ▼                     │
+│  ✅ AWI      ❌ No AWI         ✅ Enabled   ❌ Disabled               │
+│  Available   Available         Security    Normal                     │
+│     │             │                 │           │                     │
+│     │             └─────────┬───────┘           │                     │
+│     │                       │                   │                     │
+│     │                       ▼                   ▼                     │
+│     │              ┌────────────────────────────────┐                 │
+│     │              │   Traditional DOM Mode         │                 │
+│     │              │   • Navigate to page           │                 │
+│     │              │   • Parse HTML/DOM             │                 │
+│     │              │   • Find elements              │                 │
+│     │              │   • Click/Type/Extract         │                 │
+│     │              └────────────────────────────────┘                 │
+│     │                                                                  │
+│     ▼                                                                  │
+│  ┌─────────────────────────────────────────────────────────────────┐  │
+│  │  3. AWI Flow                                                    │  │
+│  │  ┌──────────────────────────────────────────────────────────┐  │  │
+│  │  │  a) Discovery                                            │  │  │
+│  │  │     GET /.well-known/llm-text                            │  │  │
+│  │  │     Parse manifest (endpoints, permissions, features)     │  │  │
+│  │  └──────────────────────┬───────────────────────────────────┘  │  │
+│  │                         ▼                                       │  │
+│  │  ┌──────────────────────────────────────────────────────────┐  │  │
+│  │  │  b) Check Existing Credentials                           │  │  │
+│  │  │     Look in ~/.config/browseruse/config.json             │  │  │
+│  │  │     Match by domain (e.g., ai-browser-security.onrender) │  │  │
+│  │  └──────────────┬─────────────────────┬─────────────────────┘  │  │
+│  │                 │                     │                         │  │
+│  │          ✅ Found                ❌ Not Found                  │  │
+│  │           Reuse                   Register New                  │  │
+│  │                 │                     │                         │  │
+│  │                 │                     ▼                         │  │
+│  │                 │  ┌──────────────────────────────────────┐    │  │
+│  │                 │  │  c) Permission Dialog (Interactive)  │    │  │
+│  │                 │  │     • Show AWI info                   │    │  │
+│  │                 │  │     • Show security features          │    │  │
+│  │                 │  │     • Get user approval               │    │  │
+│  │                 │  │     • Select permissions              │    │  │
+│  │                 │  └──────────────┬───────────────────────┘    │  │
+│  │                 │                 ▼                             │  │
+│  │                 │  ┌──────────────────────────────────────┐    │  │
+│  │                 │  │  d) Registration                      │    │  │
+│  │                 │  │     POST /api/agent/register          │    │  │
+│  │                 │  │     Get: { agent_id, api_key }        │    │  │
+│  │                 │  └──────────────┬───────────────────────┘    │  │
+│  │                 │                 │                             │  │
+│  │                 │                 ▼                             │  │
+│  │                 │  ┌──────────────────────────────────────┐    │  │
+│  │                 │  │  e) Store Credentials                 │    │  │
+│  │                 │  │     Save to agent_registry            │    │  │
+│  │                 │  │     ~/.config/browseruse/config.json  │    │  │
+│  │                 │  └──────────────┬───────────────────────┘    │  │
+│  │                 │                 │                             │  │
+│  │                 └─────────────────┘                             │  │
+│  │                         │                                       │  │
+│  │                         ▼                                       │  │
+│  │  ┌──────────────────────────────────────────────────────────┐  │  │
+│  │  │  f) Use AWI API                                          │  │  │
+│  │  │     GET /api/agent/posts                                 │  │  │
+│  │  │     Headers: X-Agent-API-Key: agent_abc123...            │  │  │
+│  │  │     Response: { success: true, data: [...] }             │  │  │
+│  │  └──────────────────────────────────────────────────────────┘  │  │
+│  └─────────────────────────────────────────────────────────────────┘  │
+│                              │                                        │
+│                              ▼                                        │
+│  ┌─────────────────────────────────────────────────────────────────┐ │
+│  │  4. LLM Processing                                              │ │
+│  │     • Input: Task + Current state + Available actions           │ │
+│  │     • LLM decides next action                                   │ │
+│  │     • Output: Action(navigate/click/extract/done)               │ │
+│  └─────────────────────┬───────────────────────────────────────────┘ │
+│                        │                                             │
+│                        ▼                                             │
+│  ┌─────────────────────────────────────────────────────────────────┐ │
+│  │  5. Action Execution                                            │ │
+│  │  ┌──────────────────────────────────────────────────────────┐  │ │
+│  │  │  Permission Check (if enabled)                           │  │ │
+│  │  │  • Check allowed_domains                                 │  │ │
+│  │  │  • Check blocked_domains                                 │  │ │
+│  │  │  • Prompt user if needed                                 │  │ │
+│  │  └──────────────────┬───────────────────────────────────────┘  │ │
+│  │                     │                                           │ │
+│  │              ┌──────┴──────┐                                    │ │
+│  │              ▼             ▼                                    │ │
+│  │         ✅ Approved    ❌ Denied                                │ │
+│  │              │             │                                    │ │
+│  │              │             └──> Try alternative                 │ │
+│  │              ▼                                                  │ │
+│  │  ┌──────────────────────────────────────────────────────────┐  │ │
+│  │  │  Execute Action                                          │  │ │
+│  │  │  • Navigate to URL                                       │  │ │
+│  │  │  • Click element                                         │  │ │
+│  │  │  • Type text                                             │  │ │
+│  │  │  • Extract content                                       │  │ │
+│  │  │  • Or: Make AWI API call                                 │  │ │
+│  │  └──────────────────────────────────────────────────────────┘  │ │
+│  └─────────────────────┬───────────────────────────────────────────┘ │
+│                        │                                             │
+│                        ▼                                             │
+│  ┌─────────────────────────────────────────────────────────────────┐ │
+│  │  6. Result Collection                                           │ │
+│  │     • Store in history                                          │ │
+│  │     • Update state                                              │ │
+│  │     • Check if task complete                                    │ │
+│  └─────────────────────┬───────────────────────────────────────────┘ │
+│                        │                                             │
+│                   ┌────┴────┐                                        │
+│                   ▼         ▼                                        │
+│              Task Done   More Steps                                  │
+│                   │         │                                        │
+│                   │         └──> Loop back to step 4                 │
+│                   ▼                                                  │
+└───────────────────┼──────────────────────────────────────────────────┘
+                    │
+                    ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│                    RETURN RESULT TO USER                                 │
+│  "The browser-use repository has 75,814 stars"                          │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+**Key Components:**
+- **Agent**: Orchestrates the entire flow
+- **AWI Discovery**: Checks if website supports AWI
+- **Permission Watchdog**: Security approval layer
+- **AWI Manager**: Handles API authentication and calls
+- **Agent Registry**: Persists credentials for reuse
+- **LLM**: Decides what actions to take
+- **Browser Session**: Executes browser actions (traditional mode)
+
+---
+
+## 🎯 Three Modes of Operation
+
+This enhanced version supports three distinct modes:
+
+### 1️⃣ **Traditional Mode** (Default)
+Standard browser automation with DOM parsing, clicking, and typing.
+
+```python
+agent = Agent(
+    task="Your task here",
+    llm=llm,
+    browser=browser,
+    # Traditional mode (default)
+)
+```
+
+### 2️⃣ **Permission Mode**
+Adds security approval workflows - requires user confirmation for sensitive actions.
+
+```python
+from browser_use import BrowserProfile
+
+profile = BrowserProfile(
+    user_approval_required=True,
+    allowed_domains=['*.google.com', '*.github.com'],
+    blocked_domains=['*.facebook.com'],
+)
+
+agent = Agent(
+    task="Your task here",
+    llm=llm,
+    browser=Browser(browser_profile=profile),
+)
+```
+
+### 3️⃣ **AWI Mode** (⚡ 500x Faster)
+Uses structured APIs instead of DOM parsing when websites support AWI protocol.
+
+```python
+agent = Agent(
+    task="List blog posts and add a comment",
+    llm=llm,
+    browser=browser,
+    awi_mode=True,  # Enable AWI mode
+)
+```
+
+**Benefits of AWI Mode:**
+- 🚀 500x token reduction vs DOM parsing
+- 📊 Server-side session state management
+- 🔒 Explicit security policies from websites
+- 📈 Structured responses with semantic metadata
+
+> **Note:** AWI mode requires an AWI-enabled backend. This repo includes a test deployment at `https://ai-browser-security.onrender.com`
+
+---
+
+## 📦 What's Included
+
+- ✅ All features from official browser-use v0.11.2
+- ✅ AWI (Agent Web Interface) client implementation
+- ✅ Permission-based security workflows
+- ✅ Agent credential registry for AWI reuse
+- ✅ Comprehensive test suite
+- ✅ Example scripts and documentation
+
+## ❓ FAQs for Enhanced Version
+
+**Q: Do I need Redis or MongoDB?**
+**A:** No! Redis and MongoDB are only needed if you're running your own AWI backend server. Browser-use itself is just an HTTP client and requires no database dependencies.
+
+**Q: Can I use the official browser-use documentation?**
+**A:** Yes! This enhanced version is fully compatible with the official browser-use API. All standard features work exactly the same way. The AWI and permission modes are optional additions.
+
+**Q: How do I test AWI mode?**
+**A:** Run `python test_browser_use.py awi` to test against the deployed AWI backend at `https://ai-browser-security.onrender.com`
+
+---
+
+For more information, check out:
+- [Official browser-use docs](https://docs.browser-use.com)
+- [AWI documentation](docs/awi/) in this repo
+- [Development guide](CLAUDE.md)
 
 <br/>
 
-# 🚀 Template Quickstart
-
-**Want to get started even faster?** Generate a ready-to-run template:
+# 🧪 Running Tests
 
 ```bash
-uvx browser-use init --template default
+# Run all modes sequentially
+python test_browser_use.py all
+
+# Run individual modes
+python test_browser_use.py traditional  # Standard DOM automation
+python test_browser_use.py permission   # With security approval
+python test_browser_use.py awi          # API-based automation
+
+# Run CI test suite
+uv run pytest -vxs tests/ci
+
+# Type checking
+uv run pyright
+
+# Code formatting
+uv run ruff check --fix
+uv run ruff format
 ```
 
-This creates a `browser_use_default.py` file with a working example. Available templates:
-- `default` - Minimal setup to get started quickly
-- `advanced` - All configuration options with detailed comments
-- `tools` - Examples of custom tools and extending the agent
+<br/>
 
-You can also specify a custom output path:
+# 🎬 Examples & Demos
+
+### Enhanced Features Demo
+
+Run the included test script to see all three modes in action:
+
 ```bash
-uvx browser-use init --template default --output my_agent.py
+# See traditional, permission, and AWI modes
+python test_browser_use.py all
 ```
 
-<br/>
+**What you'll see:**
+1. **Traditional Mode**: DOM-based automation finding GitHub stars
+2. **Permission Mode**: Same task but with security approval dialogs
+3. **AWI Mode**: API-based automation (500x fewer tokens)
 
-# Demos
+### More Examples
 
+Check out the official browser-use examples (all compatible with this enhanced version):
+- 📋 [Form filling](https://github.com/browser-use/browser-use/blob/main/examples/use-cases/apply_to_job.py)
+- 🍎 [Grocery shopping](https://github.com/browser-use/browser-use/blob/main/examples/use-cases/buy_groceries.py)
+- 💻 [Personal assistant](https://github.com/browser-use/browser-use/blob/main/examples/use-cases/pcpartpicker.py)
+- 💡 [More examples ↗](https://docs.browser-use.com/examples)
 
-### 📋 Form-Filling
-#### Task = "Fill in this job application with my resume and information."
-![Job Application Demo](https://github.com/user-attachments/assets/57865ee6-6004-49d5-b2c2-6dff39ec2ba9)
-[Example code ↗](https://github.com/browser-use/browser-use/blob/main/examples/use-cases/apply_to_job.py)
-
-
-### 🍎 Grocery-Shopping
-#### Task = "Put this list of items into my instacart."
-
-https://github.com/user-attachments/assets/a6813fa7-4a7c-40a6-b4aa-382bf88b1850
-
-[Example code ↗](https://github.com/browser-use/browser-use/blob/main/examples/use-cases/buy_groceries.py)
-
-
-### 💻 Personal-Assistant.
-#### Task = "Help me find parts for a custom PC."
-
-https://github.com/user-attachments/assets/ac34f75c-057a-43ef-ad06-5b2c9d42bf06
-
-[Example code ↗](https://github.com/browser-use/browser-use/blob/main/examples/use-cases/pcpartpicker.py)
-
-
-### 💡See [more examples here ↗](https://docs.browser-use.com/examples) and give us a star!
+**AWI-Specific Examples:**
+- See `examples/awi_mode_*.py` for AWI integration examples
+- See `tests/awi_manual/` for comprehensive AWI tests
 
 <br/>
 
-## Integrations, hosting, custom tools, MCP, and more on our [Docs ↗](https://docs.browser-use.com)
+# 🛠️ Development & Contributing
+
+**Project Structure:**
+```
+ai-browser-secure/
+├── browser_use/          # Enhanced browser-use library
+│   ├── agent/           # Agent orchestration
+│   ├── awi/             # AWI mode implementation
+│   ├── browser/         # Browser session management
+│   └── tools/           # Action registry
+├── tests/
+│   ├── ci/              # CI test suite
+│   └── awi_manual/      # AWI integration tests
+├── examples/            # Example scripts
+├── docs/                # Documentation
+└── test_browser_use.py  # Quick test script
+```
+
+**Development Guidelines:**
+- See [CLAUDE.md](CLAUDE.md) for detailed development instructions
+- Use tabs for indentation (not spaces)
+- Run `uv run pre-commit run --all-files` before committing
+- All code must pass `pyright` type checking
+- Follow existing code patterns and styles
 
 <br/>
 
-# FAQ
+# 🔧 Troubleshooting
+
+### Installation Issues
+
+**Problem:** "browser-use not found" after installation
+```bash
+# Uninstall PyPI version if installed
+uv pip uninstall browser-use
+
+# Reinstall local version
+uv pip install -e .
+```
+
+**Problem:** Import errors or version conflicts
+```bash
+# Clean reinstall
+rm -rf .venv
+uv venv --python 3.11
+source .venv/bin/activate
+uv pip install -e .
+```
+
+### AWI Mode Issues
+
+**Problem:** "EOF when reading a line" during AWI registration
+- **Cause:** Permission dialog requires interactive terminal
+- **Solution:** Run the test in an interactive terminal, not as a background process
+- **Workaround:** Use previously registered credentials (stored in `~/.config/browseruse/config.json`)
+
+**Problem:** AWI mode keeps asking for registration
+- **Cause:** Credentials stored for different domain
+- **Check:** `python -m browser_use.cli_agent_registry list`
+- **Solution:** Credentials are domain-specific for security. Register once per domain.
+
+**Problem:** AWI backend not available
+- **Check:** `curl https://ai-browser-security.onrender.com/.well-known/llm-text`
+- **Note:** Deployed backend may be in sleep mode (takes ~1 minute to wake up)
+- **Solution:** Wait 60 seconds and retry
+
+### Test Failures
+
+**Problem:** Tests fail with Chrome errors
+```bash
+# Reinstall Chrome
+uv run browser-use install
+```
+
+**Problem:** LLM API errors
+- Check your API key in `.env` is valid
+- Verify you have credits/quota remaining
+- Try a different model: `DEFAULT_LLM_MODEL=gpt-4o-mini`
+
+### Still Having Issues?
+
+1. Check [TESTING.md](TESTING.md) for detailed setup instructions
+2. Check [docs/awi/TROUBLESHOOTING.md](docs/awi/TROUBLESHOOTING.md) for AWI-specific issues
+3. Review [CLAUDE.md](CLAUDE.md) for development guidelines
+
+<br/>
+
+# ❓ FAQ
 
 <details>
-<summary><b>What's the best model to use?</b></summary>
+<summary><b>Do I need Redis or MongoDB to use this?</b></summary>
 
-We optimized **ChatBrowserUse()** specifically for browser automation tasks. On avg it completes tasks 3-5x faster than other models with SOTA accuracy.
+**No!** Redis and MongoDB are only needed if you're running your own AWI backend server for testing. Browser-use itself (including AWI mode) is just an HTTP client and requires no database dependencies.
 
-**Pricing (per 1M tokens):**
-- Input tokens: $0.20
-- Cached input tokens: $0.02
-- Output tokens: $2.00
+The enhanced browser-use client only needs:
+- Python 3.11+
+- An LLM API key (OpenAI, Anthropic, etc.)
+- Chromium browser (installed via `uv run browser-use install`)
 
-For other LLM providers, see our [supported models documentation](https://docs.browser-use.com/supported-models).
 </details>
 
+<details>
+<summary><b>What's the difference between this and official browser-use?</b></summary>
+
+This enhanced version includes everything from official browser-use v0.11.2, plus:
+- ✨ AWI mode for API-based automation (500x faster)
+- 🛡️ Permission mode with security approval workflows
+- 🔐 Domain whitelisting/blacklisting
+- 💾 Agent credential registry for AWI
+- 📊 Enhanced session state management
+
+All official browser-use features work identically. The enhancements are optional.
+
+</details>
 
 <details>
-<summary><b>Can I use custom tools with the agent?</b></summary>
+<summary><b>How do I use AWI mode?</b></summary>
 
-Yes! You can add custom tools to extend the agent's capabilities:
+Simply add `awi_mode=True` when creating an agent:
+
+```python
+agent = Agent(
+    task="Your task",
+    llm=llm,
+    browser=browser,
+    awi_mode=True,  # Enable AWI
+)
+```
+
+If the website supports AWI, you'll see a permission dialog asking to register. Once registered, credentials are saved for reuse. If the website doesn't support AWI, it automatically falls back to traditional DOM mode.
+
+Test it with: `python test_browser_use.py awi`
+
+</details>
+
+<details>
+<summary><b>What LLM should I use?</b></summary>
+
+Any LLM supported by official browser-use works:
+- **OpenAI**: `gpt-4o`, `gpt-4o-mini` (recommended for cost)
+- **Anthropic**: `claude-3-5-sonnet-20241022`
+- **Google**: `gemini-2.0-flash-exp`
+- **Local**: Ollama models
+- **ChatBrowserUse**: Optimized for browser tasks
+
+Set your API key in `.env` and use `get_default_llm()`.
+
+</details>
+
+<details>
+<summary><b>Can I use custom tools?</b></summary>
+
+Yes! This enhanced version is 100% compatible with official browser-use tools:
 
 ```python
 from browser_use import Tools
 
 tools = Tools()
 
-@tools.action(description='Description of what this tool does.')
-def custom_tool(param: str) -> str:
+@tools.action(description='Custom action description')
+def my_tool(param: str) -> str:
     return f"Result: {param}"
 
-agent = Agent(
-    task="Your task",
-    llm=llm,
-    browser=browser,
-    tools=tools,
-)
+agent = Agent(task="...", llm=llm, browser=browser, tools=tools)
 ```
 
 </details>
 
 <details>
-<summary><b>Can I use this for free?</b></summary>
+<summary><b>How do I manage AWI credentials?</b></summary>
 
-Yes! Browser-Use is open source and free to use. You only need to choose an LLM provider (like OpenAI, Google, ChatBrowserUse, or run local models with Ollama).
+View stored AWI credentials:
+```bash
+python -m browser_use.cli_agent_registry list
+```
+
+Credentials are stored in `~/.config/browseruse/config.json` and automatically reused when you revisit the same domain.
+
 </details>
 
 <details>
-<summary><b>How do I handle authentication?</b></summary>
+<summary><b>Where can I find more documentation?</b></summary>
 
-Check out our authentication examples:
-- [Using real browser profiles](https://github.com/browser-use/browser-use/blob/main/examples/browser/real_browser.py) - Reuse your existing Chrome profile with saved logins
-- If you want to use temporary accounts with inbox, choose AgentMail
-- To sync your auth profile with the remote browser, run `curl -fsSL https://browser-use.com/profile.sh | BROWSER_USE_API_KEY=XXXX sh` (replace XXXX with your API key)
+- **Official browser-use docs**: [docs.browser-use.com](https://docs.browser-use.com)
+- **AWI documentation**: `docs/awi/` in this repo
+- **Development guide**: [CLAUDE.md](CLAUDE.md)
+- **Test examples**: `test_browser_use.py` and `tests/awi_manual/`
 
-These examples show how to maintain sessions and handle authentication seamlessly.
-</details>
-
-<details>
-<summary><b>How do I solve CAPTCHAs?</b></summary>
-
-For CAPTCHA handling, you need better browser fingerprinting and proxies. Use [Browser Use Cloud](https://cloud.browser-use.com) which provides stealth browsers designed to avoid detection and CAPTCHA challenges.
-</details>
-
-<details>
-<summary><b>How do I go into production?</b></summary>
-
-Chrome can consume a lot of memory, and running many agents in parallel can be tricky to manage.
-
-For production use cases, use our [Browser Use Cloud API](https://cloud.browser-use.com) which handles:
-- Scalable browser infrastructure
-- Memory management
-- Proxy rotation
-- Stealth browser fingerprinting
-- High-performance parallel execution
 </details>
 
 <br/>
+
+---
+
+# 🙏 Credits & Attribution
+
+This enhanced version is built on top of [browser-use](https://github.com/browser-use/browser-use) by Magnus Rødseth and Gregor Gysi.
+
+**Original browser-use:**
+- Repository: [github.com/browser-use/browser-use](https://github.com/browser-use/browser-use)
+- Documentation: [docs.browser-use.com](https://docs.browser-use.com)
+- License: MIT
+
+**Enhancements in this fork:**
+- AWI (Agent Web Interface) protocol implementation
+- Permission-based security workflows
+- Agent credential registry
+- Enhanced session management
+- Additional test coverage
+
+**Based on browser-use version:** 0.11.2
+
+---
 
 <div align="center">
 
@@ -260,10 +950,14 @@ For production use cases, use our [Browser Use Cloud API](https://cloud.browser-
 
 <img src="https://github.com/user-attachments/assets/06fa3078-8461-4560-b434-445510c1766f" width="400"/>
 
+**Original browser-use by:**
+
 [![Twitter Follow](https://img.shields.io/twitter/follow/Magnus?style=social)](https://x.com/intent/user?screen_name=mamagnus00)
 &emsp;&emsp;&emsp;
 [![Twitter Follow](https://img.shields.io/twitter/follow/Gregor?style=social)](https://x.com/intent/user?screen_name=gregpr07)
 
-</div>
+<br/>
 
-<div align="center"> Made with ❤️ in Zurich and San Francisco </div>
+Made with ❤️ in Zurich and San Francisco
+
+</div>

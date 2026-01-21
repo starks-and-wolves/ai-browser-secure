@@ -199,8 +199,7 @@ if __name__ == "__main__":
 		sys.exit(1)
 
 	print("   ℹ️  Backend server should be running on http://localhost:5000")
-	print("   ℹ️  MongoDB should be running")
-	print("   ℹ️  Redis should be running")
+	print("   ℹ️  (Backend manages its own MongoDB and Redis internally)")
 
 	print("\n" + "=" * 80)
 	print("🔧 Improvements in This Version:")

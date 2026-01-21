@@ -35,10 +35,24 @@ We want our library APIs to be ergonomic, intuitive, and hard to get wrong.
 
 **Setup:**
 ```bash
+# Create a virtual environment with Python 3.11
 uv venv --python 3.11
-source .venv/bin/activate
-uv sync
+
+# Activate the virtual environment
+source .venv/bin/activate  # On Unix/macOS
+# .venv\Scripts\activate   # On Windows
+
+# IMPORTANT: Install dependencies WITHOUT installing browser-use from PyPI
+# This ensures the local enhanced version is used, not the original package
+uv pip install -e .
+
+# Alternatively, if you need to sync dependencies:
+# First ensure browser-use is NOT in your dependencies, then run:
+# uv sync --no-install-project
+# uv pip install -e .
 ```
+
+**⚠️ Critical:** Never run `uv add browser-use` or `pip install browser-use` as this will install the original package from PyPI instead of the local enhanced version. Always use `uv pip install -e .` to install the local codebase in editable mode.
 
 **Testing:**
 - Run CI tests: `uv run pytest -vxs tests/ci`

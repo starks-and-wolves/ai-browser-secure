@@ -27,17 +27,7 @@ else
     ALL_OK=false
 fi
 
-# Check 2: Redis
-echo -n "Checking Redis... "
-if redis-cli -a "3N2KTrkx200fctgtodEJoc1nPAQoKu21" ping > /dev/null 2>&1; then
-    echo -e "${GREEN}✅ Running${NC}"
-else
-    echo -e "${RED}❌ Not running${NC}"
-    echo "   Start with: redis-server"
-    ALL_OK=false
-fi
-
-# Check 3: AWI Discovery
+# Check 2: AWI Discovery
 echo -n "Checking AWI discovery... "
 if curl -sI http://localhost:5000 2>&1 | grep -q "X-AWI-Discovery"; then
     echo -e "${GREEN}✅ Available${NC}"
@@ -47,7 +37,7 @@ else
     ALL_OK=false
 fi
 
-# Check 4: OpenAI API Key
+# Check 3: OpenAI API Key
 echo -n "Checking OpenAI API key... "
 if [ -n "$OPENAI_API_KEY" ]; then
     echo -e "${GREEN}✅ Set${NC}"
@@ -55,7 +45,7 @@ else
     echo -e "${YELLOW}⚠️  Not set (will use default LLM)${NC}"
 fi
 
-# Check 5: Python environment
+# Check 4: Python environment
 echo -n "Checking Python environment... "
 if python3 -c "import browser_use" 2>/dev/null; then
     echo -e "${GREEN}✅ browser-use installed${NC}"

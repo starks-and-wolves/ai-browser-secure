@@ -347,7 +347,7 @@ if __name__ == "__main__":
 		sys.exit(1)
 
 	print("   ℹ️  Ensure backend is running on http://localhost:5000")
-	print("   ℹ️  Ensure MongoDB and Redis are running")
+	print("   ℹ️  (Backend manages its own MongoDB and Redis internally)")
 
 	print("\n🎯 This test will:")
 	print("   1. Discover AWI at localhost:5000")

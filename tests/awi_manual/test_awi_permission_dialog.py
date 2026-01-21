@@ -89,8 +89,7 @@ async def main():
     print("=" * 80)
     print("\nPrerequisites:")
     print("✅ Backend server running on http://localhost:5000")
-    print("✅ MongoDB running")
-    print("✅ Redis running")
+    print("   (Backend manages MongoDB and Redis internally)")
     print("\nPress Ctrl+C to stop at any time\n")
 
     try:

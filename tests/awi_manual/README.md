@@ -4,7 +4,7 @@ This directory contains manual test scripts for the AWI (Agent Web Interface) mo
 
 ## Overview
 
-These tests verify AWI mode functionality and require a running backend server (typically on `localhost:5000`) with MongoDB and Redis.
+These tests verify AWI mode functionality and require a running backend server (typically on `localhost:5000`). The backend server uses MongoDB and Redis for session management, but browser-use itself does not require Redis.
 
 ## Test Files
 
@@ -37,11 +37,6 @@ These tests verify AWI mode functionality and require a running backend server (
 - Tests all AWI operations
 - Verifies session state tracking
 
-**`test_redis_functionality.py`** - Redis integration
-- Tests session management
-- Validates Redis connectivity
-- Verifies state persistence
-
 ### 🎨 Demo
 **`demo_create_blog_post.py`** - Interactive demo
 - Demonstrates AWI capabilities
@@ -57,17 +52,13 @@ These tests verify AWI mode functionality and require a running backend server (
 ## Quick Start
 
 ### 1. Prerequisites
-Ensure these services are running:
+Ensure the backend server is running:
 ```bash
-# Backend server
+# Backend server (which internally uses MongoDB and Redis)
 http://localhost:5000
-
-# MongoDB (default port 27017)
-mongod
-
-# Redis (default port 6379)
-redis-server
 ```
+
+**Note:** Browser-use does not require Redis or MongoDB directly. These are dependencies of the test backend server only.
 
 ### 2. Environment Setup
 ```bash
@@ -111,7 +102,7 @@ When AWI mode activates successfully:
 - ✅ Permission dialog appears (manual tests)
 - ✅ Agent registers with the AWI
 - ✅ Agent uses API calls instead of DOM interaction
-- ✅ Session state is tracked in Redis
+- ✅ Session state is tracked server-side (by the backend)
 - ✅ Task completes without DOM parsing
 
 ## Common Issues
@@ -122,16 +113,11 @@ Error: Connection refused to localhost:5000
 Fix: Start the backend server
 ```
 
-### MongoDB Not Running
+### Backend Server Issues
 ```
-Error: MongoNetworkError
-Fix: Start MongoDB with 'mongod'
-```
-
-### Redis Not Running
-```
-Error: Redis connection failed
-Fix: Start Redis with 'redis-server'
+Error: Connection refused or backend errors
+Fix: Ensure the backend server is running on localhost:5000
+     The backend server manages its own MongoDB and Redis connections
 ```
 
 ### Permission Denied
