@@ -9,7 +9,8 @@ services:
     plan: free
     region: oregon
     buildCommand: |
-      pip install -e .
+      pip install uv
+      uv pip install --system -e .
       playwright install chromium --with-deps
     startCommand: python main.py
     envVars:
