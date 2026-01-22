@@ -476,6 +476,10 @@ async def main():
 
 
 if __name__ == "__main__":
+    # Windows-specific fix: Set event loop policy to support subprocesses
+    if sys.platform == 'win32':
+        asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
     try:
         asyncio.run(main())
     except KeyboardInterrupt:

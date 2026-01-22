@@ -761,6 +761,14 @@ class AgentError:
 		"""Format error message based on error type and optionally include trace"""
 		message = ''
 		if isinstance(error, ValidationError):
+			# Pydantic 2.x ValidationErrors have detailed error info
+			errors = error.errors()
+			if errors:
+				error_details = '\n'.join([
+					f"  - Field '{e.get('loc', ['unknown'])[0]}': {e.get('msg', 'validation error')} (type: {e.get('type', 'unknown')})"
+					for e in errors
+				])
+				return f'{AgentError.VALIDATION_ERROR}\nValidation Errors:\n{error_details}'
 			return f'{AgentError.VALIDATION_ERROR}\nDetails: {str(error)}'
 		# Lazy import to avoid loading openai SDK (~800ms) at module level
 		from openai import RateLimitError

@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: browser-use-demo-backend
+    env: python
+    region: oregon
+    plan: starter
+    buildCommand: |
+      cd ../..
+      pip install uv
+      uv pip install -e .
+      cd browser_use/demo_server
+      pip install -r requirements.txt
+    startCommand: |
+      cd browser_use/demo_server
+      uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: CORS_ORIGINS
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+    autoDeploy: true

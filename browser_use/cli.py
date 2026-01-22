@@ -2030,6 +2030,10 @@ def main(ctx: click.Context, debug: bool = False, **kwargs):
 def run_main_interface(ctx: click.Context, debug: bool = False, **kwargs):
 	"""Run the main browser-use interface"""
 
+	# Windows-specific fix: Set event loop policy to support subprocesses
+	if sys.platform == 'win32':
+		asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
 	if kwargs['version']:
 		from importlib.metadata import version
 

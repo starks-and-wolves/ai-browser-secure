@@ -26,7 +26,39 @@ python --version
 # Should be Python 3.11 or higher
 ```
 
-### 2. Install the Enhanced Version
+### 2. Create and Activate Virtual Environment
+
+**Linux/Mac:**
+```bash
+# Create a virtual environment with Python 3.11
+uv venv --python 3.11
+
+# Activate the virtual environment
+source .venv/bin/activate
+```
+
+**Windows (PowerShell):**
+```powershell
+# Create a virtual environment with Python 3.11
+uv venv --python 3.11
+
+# Activate the virtual environment
+.venv\Scripts\Activate.ps1
+```
+
+**Windows (Command Prompt):**
+```cmd
+# Create a virtual environment with Python 3.11
+uv venv --python 3.11
+
+# Activate the virtual environment
+.venv\Scripts\activate.bat
+```
+
+**Verify activation:**
+Your terminal prompt should now show `(.venv)` at the beginning, indicating the virtual environment is active.
+
+### 3. Install the Enhanced Version
 
 ```bash
 # Install local package in editable mode (REQUIRED for enhanced version)
@@ -38,13 +70,13 @@ uv pip install -e ".[all]"
 
 **⚠️ Critical:** Do NOT run `uv add browser-use` or `pip install browser-use` - this will install the original package from PyPI instead of the enhanced version!
 
-### 3. Install Chromium
+### 4. Install Chromium
 
 ```bash
 uv run browser-use install
 ```
 
-### 4. Configure API Keys
+### 5. Configure API Keys
 
 The test script will create a `.env` file for you on first run. Edit it and add your API key:
 
@@ -63,7 +95,7 @@ DEFAULT_LLM_MODEL=gpt-4o
 - Anthropic: https://console.anthropic.com/
 - Browser Use Cloud: https://cloud.browser-use.com/new-api-key (free credits available)
 
-### 5. Run First Test
+### 6. Run First Test
 
 ```bash
 python test_browser_use.py
@@ -435,6 +467,47 @@ Run the diagnostic script to identify the exact issue:
 ```powershell
 python diagnose_windows.py
 ```
+
+### Issue: "NotImplementedError" when launching browser on Windows
+
+**Problem:** Getting `NotImplementedError` error when trying to run the agent on Windows, specifically at `asyncio.create_subprocess_exec()`
+
+**Cause:** Windows requires a specific asyncio event loop policy to support subprocess operations.
+
+**Solution:**
+
+✅ **This issue is now FIXED globally in browser-use v0.11.2+**
+
+The fix has been applied at the library level in `browser_use/__init__.py`, so it automatically applies to all uses of browser-use on Windows, including:
+- CLI usage (`uvx browser-use`)
+- Test scripts (`python test_browser_use.py`)
+- Demo server (WebSocket live demos)
+- All example scripts
+- Custom scripts that import `browser_use`
+
+**No action required** - Just import browser-use normally and it will work on Windows!
+
+**For reference**, if you're writing standalone scripts that don't import browser-use, you can add this before calling `asyncio.run()`:
+
+```python
+import asyncio
+import sys
+
+if __name__ == '__main__':
+    # Windows-specific fix: Set event loop policy to support subprocesses
+    if sys.platform == 'win32':
+        asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
+    asyncio.run(main())
+```
+
+**Files where fix is applied:**
+- ✅ `browser_use/__init__.py` - **Global fix applied at library import (covers all use cases)**
+- ✅ `test_browser_use.py` - Standalone test script (has explicit fix for when run directly)
+- ✅ `browser_use/cli.py` - CLI entry point (has explicit fix)
+- ✅ All `examples/getting_started/*.py` files (01-05) - Each has explicit fix
+
+**Note:** The demo server (`browser_use/demo_server/`) doesn't need an explicit fix because it imports `browser_use`, which automatically applies the global fix from `__init__.py`.
 
 ### Issue: "Chromium not found"
 

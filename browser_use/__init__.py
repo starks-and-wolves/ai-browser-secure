@@ -1,7 +1,14 @@
+import asyncio
 import os
+import sys
 from typing import TYPE_CHECKING
 
 from browser_use.logging_config import setup_logging
+
+# Windows-specific fix: Set event loop policy to support subprocesses
+# This must be set before any event loops are created
+if sys.platform == 'win32':
+	asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 # Only set up logging if not in MCP mode or if explicitly requested
 if os.environ.get('BROWSER_USE_SETUP_LOGGING', 'true').lower() != 'false':

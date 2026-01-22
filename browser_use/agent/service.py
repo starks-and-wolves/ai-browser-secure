@@ -1067,6 +1067,15 @@ class Agent(Generic[Context, AgentStructuredOutput]):
 			await self._post_process()
 
 		except Exception as e:
+			# Log detailed error information before handling
+			if isinstance(e, ValidationError):
+				self.logger.error(f"🐛 ValidationError caught - Details:")
+				for error in e.errors():
+					self.logger.error(f"   Field: {error.get('loc', 'unknown')}")
+					self.logger.error(f"   Message: {error.get('msg', 'unknown')}")
+					self.logger.error(f"   Type: {error.get('type', 'unknown')}")
+					if 'input' in error:
+						self.logger.error(f"   Input: {str(error['input'])[:200]}")
 			# Handle ALL exceptions in one place
 			await self._handle_step_error(e)
 
@@ -1079,13 +1088,23 @@ class Agent(Generic[Context, AgentStructuredOutput]):
 
 		assert self.browser_session is not None, 'BrowserSession is not set up'
 
-		self.logger.debug(f'🌐 Step {self.state.n_steps}: Getting browser state...')
-		# Always take screenshots for all steps
-		self.logger.debug('📸 Requesting browser state with include_screenshot=True')
-		browser_state_summary = await self.browser_session.get_browser_state_summary(
-			include_screenshot=True,  # always capture even if use_vision=False so that cloud sync is useful (it's fast now anyway)
-			include_recent_events=self.include_recent_events,
-		)
+		# In AWI mode with active manager, skip expensive browser state collection
+		# AWI agents don't need DOM/screenshots as they use structured APIs
+		if await self._is_awi_available():
+			self.logger.debug(f'🌐 Step {self.state.n_steps}: Skipping browser state (AWI mode active)')
+			# Return minimal browser state without screenshot or DOM processing
+			browser_state_summary = await self.browser_session.get_browser_state_summary(
+				include_screenshot=False,  # Skip screenshot in AWI mode
+				include_recent_events=False,  # Skip events in AWI mode
+			)
+		else:
+			self.logger.debug(f'🌐 Step {self.state.n_steps}: Getting browser state...')
+			# Always take screenshots for all steps
+			self.logger.debug('📸 Requesting browser state with include_screenshot=True')
+			browser_state_summary = await self.browser_session.get_browser_state_summary(
+				include_screenshot=True,  # always capture even if use_vision=False so that cloud sync is useful (it's fast now anyway)
+				include_recent_events=self.include_recent_events,
+			)
 		if browser_state_summary.screenshot:
 			self.logger.debug(f'📸 Got browser state WITH screenshot, length: {len(browser_state_summary.screenshot)}')
 		else:
@@ -1828,8 +1847,17 @@ class Agent(Generic[Context, AgentStructuredOutput]):
 
 			self._log_next_action_summary(parsed)
 			return parsed
-		except ValidationError:
-			# Just re-raise - Pydantic's validation errors are already descriptive
+		except ValidationError as e:
+			# Log detailed validation error for debugging
+			self.logger.error(f"❌ Pydantic validation error: {e}")
+			self.logger.error(f"   Error details: {e.errors()}")
+			# Try to log the raw response if available
+			try:
+				if hasattr(response, 'content'):
+					self.logger.error(f"   Raw LLM response: {str(response.content)[:500]}")
+			except:
+				pass
+			# Re-raise with more context
 			raise
 		except (ModelRateLimitError, ModelProviderError) as e:
 			# Check if we can switch to a fallback LLM

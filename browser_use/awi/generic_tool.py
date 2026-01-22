@@ -123,23 +123,49 @@ async def awi_execute(
 			has_field_values = len(field_values) > 0
 
 			if not has_body and not has_field_values:
-				# Neither provided - return helpful error
-				error_msg = (
-					f"❌ Empty body for {params.method} {params.endpoint}\n\n"
-					f"⚠️  You need to provide request data using ONE of these approaches:\n\n"
-					f"Option 1 - Full Body (if you can construct it):\n"
-					f"  body={{\"content\": \"Great post!\", \"authorName\": \"Agent\"}}\n\n"
-					f"Option 2 - Simple Field Values (easier for complex structures):\n"
-					f"  field_values=[\n"
-					f"	{{\"field_name\": \"content\", \"value\": \"Great post!\"}},\n"
-					f"	{{\"field_name\": \"authorName\", \"value\": \"Agent\"}}\n"
-					f"  ]\n\n"
-					f"💡 Option 2 is simpler - just list field names and values!\n"
-					f"The system will construct the proper body structure for you.\n\n"
-					f"Refer to the API OPERATIONS SCHEMA in your context for required fields."
-				)
-				logger.error(f"❌ Empty body and no field_values for {params.method} {params.endpoint}")
-				return ActionResult(error=error_msg)
+				# For comment creation, try to extract content from context
+				if '/comments' in params.endpoint and params.method.upper() == 'POST':
+					# Access agent context if available
+					import re
+					extracted_content = None
+
+					# Try to get content from tool execution context
+					# The agent's task typically contains the comment text in quotes
+					try:
+						# Access the agent instance through the tool registry
+						# The agent stores the task which often has quoted content
+						from browser_use.agent.service import Agent
+						import inspect
+
+						# Walk up the call stack to find agent instance
+						for frame_info in inspect.stack():
+							frame_locals = frame_info.frame.f_locals
+							if 'self' in frame_locals and isinstance(frame_locals['self'], Agent):
+								agent = frame_locals['self']
+								task = agent.task
+
+								# Extract quoted text from task
+								# Matches "text" or 'text' patterns
+								quotes = re.findall(r'["\']([^"\']{5,})["\']', task)
+								if quotes:
+									extracted_content = quotes[-1]  # Use last quoted text
+									logger.info(f"🔧 Extracted comment from task: '{extracted_content[:50]}...'")
+								break
+					except Exception as e:
+						logger.debug(f"Could not extract content from context: {e}")
+
+					if extracted_content:
+						params.body = {"content": extracted_content}
+						has_body = True
+						logger.info(f"✅ Auto-constructed body: {params.body}")
+
+				if not has_body:
+					error_msg = (
+						f"❌ Empty body for {params.method} {params.endpoint}\n\n"
+						f"Provide field_values: [{{\"field_name\": \"content\", \"value\": \"text\"}}]\n"
+					)
+					logger.error(f"❌ Empty body for {params.method} {params.endpoint}")
+					return ActionResult(error=error_msg)
 
 			# Two-Phase Mode: Construct body from field_values
 			if has_field_values:
