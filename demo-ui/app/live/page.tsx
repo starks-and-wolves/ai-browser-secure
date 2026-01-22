@@ -16,11 +16,40 @@ interface LogEntry {
 }
 
 export default function LiveDemoPage() {
+	// Auto-detect backend URL from environment or infer from hostname
+	const getDefaultBackendUrl = () => {
+		// Check environment variable first
+		const envUrl = process.env.NEXT_PUBLIC_API_URL
+		if (envUrl && envUrl !== 'http://localhost:8000') {
+			return envUrl
+		}
+
+		// If running on Replit, try to infer backend URL
+		if (typeof window !== 'undefined') {
+			const hostname = window.location.hostname
+
+			// Pattern: frontend-name.username.repl.co -> backend-name.username.repl.co
+			if (hostname.includes('.repl.co') || hostname.includes('.replit.dev')) {
+				const parts = hostname.split('.')
+				if (parts.length >= 3) {
+					// Replace frontend name with backend name
+					const backendHostname = hostname.replace(/^[^.]+/, 'browser-use-backend')
+					return `https://${backendHostname}`
+				}
+			}
+		}
+
+		// Default fallback
+		return 'http://localhost:8000'
+	}
+
 	// Form state
 	const [mode, setMode] = useState<ExecutionMode>('awi')
 	const [apiKey, setApiKey] = useState('')
 	const [task, setTask] = useState('List the top 3 blog posts, then add a comment, \'Great post!\' to the first one. After adding the comment, end the process')
 	const [targetUrl, setTargetUrl] = useState('https://blog.anthropic.com')
+	const [backendUrl, setBackendUrl] = useState(getDefaultBackendUrl())
+	const [showBackendConfig, setShowBackendConfig] = useState(false)
 
 	// Execution state
 	const [status, setStatus] = useState<ExecutionStatus>('idle')
@@ -74,18 +103,17 @@ export default function LiveDemoPage() {
 		try {
 			// Step 1: Check backend health
 			addLog('info', 'Checking backend connection...')
-			const diagnostics = getDiagnosticInfo()
-			addLog('info', `Backend URL: ${diagnostics.apiUrl}`)
+			addLog('info', `Backend URL: ${backendUrl}`)
 
-			const healthCheck = await checkBackendHealth()
+			const healthCheck = await checkBackendHealth(backendUrl)
 
 			if (!healthCheck.reachable) {
 				addLog('error', `Backend health check failed: ${healthCheck.error}`)
 				addLog('error', 'Troubleshooting tips:')
 				addLog('error', '1. Check if backend is running')
-				addLog('error', '2. Verify NEXT_PUBLIC_API_URL in environment')
+				addLog('error', '2. Click "Backend Settings" to verify/update backend URL')
 				addLog('error', '3. Check browser console for CORS errors')
-				addLog('error', `4. Current backend URL: ${diagnostics.apiUrl}`)
+				addLog('error', `4. Current backend URL: ${backendUrl}`)
 				setStatus('error')
 				return
 			}
@@ -99,6 +127,7 @@ export default function LiveDemoPage() {
 				mode,
 				targetUrl,
 				apiKey,
+				backendUrl,
 			})
 
 			if (!result.success || !result.sessionId) {
@@ -111,8 +140,7 @@ export default function LiveDemoPage() {
 
 			// Step 3: Connect WebSocket
 			addLog('info', 'Connecting WebSocket...')
-			const apiUrl = getApiUrl()
-			const client = new LiveDemoClient(result.sessionId, apiUrl)
+			const client = new LiveDemoClient(result.sessionId, backendUrl)
 			setWsClient(client)
 
 			await client.connect(
@@ -432,6 +460,72 @@ export default function LiveDemoPage() {
 								<p className="text-xs text-gray-500 mt-1">
 									Your API key is never stored. Used only for this execution.
 								</p>
+							</div>
+
+							{/* Backend Settings */}
+							<div className="border-t border-gray-700 pt-4">
+								<button
+									onClick={() => setShowBackendConfig(!showBackendConfig)}
+									className="flex items-center justify-between w-full text-sm font-medium text-gray-300 hover:text-white transition-colors"
+									type="button"
+								>
+									<span>⚙️ Backend Settings</span>
+									<span className="text-xs">{showBackendConfig ? '▼' : '▶'}</span>
+								</button>
+
+								{showBackendConfig && (
+									<div className="mt-4 space-y-3">
+										<div>
+											<label htmlFor="backend-url" className="block text-xs font-medium mb-2 text-gray-400">
+												Backend API URL
+											</label>
+											<input
+												id="backend-url"
+												type="url"
+												value={backendUrl}
+												onChange={(e) => setBackendUrl(e.target.value)}
+												className="w-full px-3 py-2 text-sm bg-gray-900 border border-gray-700 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-white font-mono"
+												placeholder="https://backend.repl.co"
+												disabled={status !== 'idle'}
+											/>
+										</div>
+
+										<div className="bg-gray-900 p-3 rounded text-xs space-y-2">
+											<p className="text-gray-400">
+												<strong className="text-white">Auto-detected:</strong>{' '}
+												{backendUrl.includes('localhost')
+													? '🟡 Using localhost (local development)'
+													: backendUrl.includes('repl.co') || backendUrl.includes('replit.dev')
+													? '🟢 Using Replit backend'
+													: '🔵 Using custom backend'
+												}
+											</p>
+											<p className="text-gray-500">
+												If the backend URL is wrong, update it here. For Replit, it should be:{' '}
+												<code className="text-blue-400">https://browser-use-backend.YOUR_USERNAME.repl.co</code>
+											</p>
+										</div>
+
+										<button
+											onClick={async () => {
+												addLog('info', `Testing connection to: ${backendUrl}`)
+												const healthCheck = await checkBackendHealth(backendUrl)
+												if (healthCheck.reachable) {
+													addLog('info', `✅ Backend is reachable! (${healthCheck.latency}ms)`)
+													alert(`✅ Backend is reachable!\nLatency: ${healthCheck.latency}ms`)
+												} else {
+													addLog('error', `❌ Backend not reachable: ${healthCheck.error}`)
+													alert(`❌ Backend not reachable:\n${healthCheck.error}`)
+												}
+											}}
+											className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+											type="button"
+											disabled={status !== 'idle'}
+										>
+											🔍 Test Connection
+										</button>
+									</div>
+								)}
 							</div>
 
 							{/* Start/Stop Button */}

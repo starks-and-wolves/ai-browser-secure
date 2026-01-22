@@ -1,40 +1,12 @@
-modules = ["nodejs-20", "bash", "web", "python-3.12"]
-[agent]
-expertMode = true
+modules = ["python-3.11"]
 
 [nix]
-channel = "stable-25_05"
-
-[workflows]
-runButton = "Project"
-
-[[workflows.workflow]]
-name = "Project"
-mode = "parallel"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Demo UI"
-
-[[workflows.workflow]]
-name = "Demo UI"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd demo-ui && npm run dev"
-waitForPort = 5000
-
-[workflows.workflow.metadata]
-outputType = "webview"
-
-[[ports]]
-localPort = 5000
-externalPort = 80
+channel = "stable-23_11"
 
 [deployment]
-deploymentTarget = "autoscale"
-build = ["bash", "-c", "cd demo-ui && npm run build"]
-publicDir = "demo-ui/.next/standalone"
-run = ["bash", "-c", "cd demo-ui && npm run start"]
+run = ["python", "main.py"]
+deploymentTarget = "cloudrun"
+
+[[ports]]
+localPort = 8000
+externalPort = 80

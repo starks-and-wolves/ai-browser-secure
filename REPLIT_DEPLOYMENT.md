@@ -6,11 +6,14 @@ This guide walks you through deploying the browser-use demo server and UI on Rep
 
 **Getting "Failed to fetch" error?** → See [REPLIT_TROUBLESHOOTING.md](REPLIT_TROUBLESHOOTING.md)
 
-Common causes:
-1. Backend not running → Click "Run" in backend Repl
-2. Wrong backend URL → Check `.env.production` in frontend
-3. CORS issue → Already configured, restart both Repls
-4. Next.js dev mode → Use production mode (already configured)
+**Getting "panic: runtime error" during build?** → See [demo-ui/REPLIT_BUILD_FIX.md](demo-ui/REPLIT_BUILD_FIX.md)
+
+Common issues:
+1. **UPM crash during build** → Use `npm install` directly (see build fix guide)
+2. Backend not running → Click "Run" in backend Repl
+3. Wrong backend URL → Check `.env.production` in frontend
+4. CORS issue → Already configured, restart both Repls
+5. Next.js dev mode → Use production mode (already configured)
 
 ## 📋 Prerequisites
 

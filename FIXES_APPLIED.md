@@ -14,7 +14,43 @@ Additional error:
 
 ## ✅ Fixes Applied
 
-### 1. **Next.js Configuration for Replit** ✅
+### 1. **Auto-Detection of Backend URL** ✅ NEW!
+
+**Files:**
+- `demo-ui/app/live/page.tsx`
+- `demo-ui/lib/api.ts`
+
+**Added:**
+- Automatic detection of Replit backend URL based on hostname
+- Falls back to environment variable if available
+- Defaults to localhost for local development
+
+**What this fixes:** No more hardcoded `localhost:8000` in production! The frontend automatically finds your backend on Replit.
+
+**How it works:**
+```typescript
+// If frontend is at: browser-use-frontend.USERNAME.repl.co
+// Auto-detects backend: browser-use-backend.USERNAME.repl.co
+```
+
+---
+
+### 2. **Backend Settings UI** ✅ NEW!
+
+**File:** `demo-ui/app/live/page.tsx`
+
+**Added:**
+- Collapsible "Backend Settings" section in UI
+- Shows current backend URL
+- Allows manual override if needed
+- "Test Connection" button to verify backend is reachable
+- Auto-detection status indicator
+
+**What this fixes:** Users can now see and change the backend URL without editing files or rebuilding!
+
+---
+
+### 3. **Next.js Configuration for Replit** ✅
 
 **File:** `demo-ui/next.config.ts`
 
@@ -122,6 +158,29 @@ Copy the changes from the modified files to your Repls:
 
 ## 🔧 Immediate Fix for Your Current Error
 
+### Quick Fix: Pull Latest Changes (EASIEST)
+
+The new version has **auto-detection** built in!
+
+```bash
+# In frontend Repl:
+git pull origin main
+
+# Clear and rebuild
+rm -rf .next node_modules
+npm install
+npm run build
+
+# Start
+npm start
+```
+
+**Done!** The frontend will now automatically detect your backend URL on Replit.
+
+---
+
+### Alternative: Manual Fix (If Not Using Git)
+
 ### Step 1: Rebuild Frontend in Production Mode
 
 In your **frontend Repl** shell:
@@ -139,7 +198,17 @@ npm run build
 npm start
 ```
 
-### Step 2: Verify Backend URL
+### Step 2: Use Backend Settings in UI
+
+After starting the frontend:
+
+1. Go to the live demo page
+2. Click **"⚙️ Backend Settings"** (above the Start button)
+3. Update the **Backend API URL** field with your actual backend URL
+4. Click **"🔍 Test Connection"** to verify
+5. If ✅, start your demo!
+
+**OR** set environment variable (requires rebuild):
 
 In your **frontend Repl**, check:
 
@@ -147,12 +216,7 @@ In your **frontend Repl**, check:
 cat .env.production
 ```
 
-Should show:
-```bash
-NEXT_PUBLIC_API_URL=https://browser-use-backend.YOUR_USERNAME.repl.co
-```
-
-If wrong or missing, update it:
+Update it:
 
 ```bash
 # Edit .env.production
@@ -162,6 +226,11 @@ nano .env.production
 NEXT_PUBLIC_API_URL=https://browser-use-backend.YOUR_USERNAME.repl.co
 
 # Save: Ctrl+O, Enter, Ctrl+X
+
+# Then rebuild
+rm -rf .next
+npm run build
+npm start
 ```
 
 ### Step 3: Verify Backend is Running
@@ -301,8 +370,10 @@ See **[REPLIT_TROUBLESHOOTING.md](REPLIT_TROUBLESHOOTING.md)** for:
 |------|--------|---------|
 | `demo-ui/next.config.ts` | Added `allowedDevOrigins` | Fix Replit dev mode CORS |
 | `demo-ui/.replit` | Added `NODE_ENV=production` | Run in production mode |
-| `demo-ui/lib/api.ts` | NEW FILE | Better error handling & diagnostics |
-| `demo-ui/app/live/page.tsx` | Updated `startDemo()` | Use new API utils, better errors |
+| `demo-ui/lib/api.ts` | NEW FILE + updated | Better error handling, backendUrl parameter |
+| `demo-ui/app/live/page.tsx` | Added auto-detection + UI settings | Auto-find backend, allow manual override |
+| `demo-ui/.env.production` | Updated with better docs | Clear instructions for setting URL |
+| `demo-ui/BACKEND_SETUP.md` | NEW FILE | Complete guide for backend URL setup |
 | `REPLIT_TROUBLESHOOTING.md` | NEW FILE | Comprehensive troubleshooting guide |
 | `REPLIT_DEPLOYMENT.md` | Added troubleshooting link | Quick access to fixes |
 | `FIXES_APPLIED.md` | THIS FILE | Summary of what was fixed |

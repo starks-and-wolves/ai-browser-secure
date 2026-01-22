@@ -12,19 +12,19 @@ export function getApiUrl(): string {
 /**
  * Check if backend is reachable
  */
-export async function checkBackendHealth(): Promise<{
+export async function checkBackendHealth(apiUrl?: string): Promise<{
 	reachable: boolean
 	error?: string
 	latency?: number
 }> {
-	const apiUrl = getApiUrl()
+	const backendUrl = apiUrl || getApiUrl()
 	const startTime = Date.now()
 
 	try {
 		const controller = new AbortController()
 		const timeoutId = setTimeout(() => controller.abort(), 10000) // 10s timeout
 
-		const response = await fetch(`${apiUrl}/health`, {
+		const response = await fetch(`${backendUrl}/health`, {
 			method: 'GET',
 			signal: controller.signal,
 		})
@@ -88,12 +88,13 @@ export async function startLiveDemo(params: {
 	mode: 'awi' | 'permission' | 'traditional'
 	targetUrl: string
 	apiKey: string
+	backendUrl?: string
 }): Promise<{
 	success: boolean
 	sessionId?: string
 	error?: string
 }> {
-	const apiUrl = getApiUrl()
+	const apiUrl = params.backendUrl || getApiUrl()
 
 	try {
 		const response = await fetch(`${apiUrl}/api/live/start`, {

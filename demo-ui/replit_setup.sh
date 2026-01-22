@@ -13,13 +13,40 @@ if [ -z "$REPL_ID" ]; then
     echo ""
 fi
 
-# Step 1: Install Node.js dependencies
-echo "📦 Step 1: Installing Node.js dependencies..."
+# Step 1: Clean previous installations
+echo "🧹 Step 1: Cleaning previous installations..."
+if [ -d "node_modules" ]; then
+    echo "   Removing old node_modules..."
+    rm -rf node_modules
+fi
+if [ -f "package-lock.json" ]; then
+    echo "   Removing old package-lock.json..."
+    rm -f package-lock.json
+fi
+if [ -d ".next" ]; then
+    echo "   Removing old build..."
+    rm -rf .next
+fi
+echo "✅ Cleanup complete"
+echo ""
+
+# Step 2: Install Node.js dependencies
+echo "📦 Step 2: Installing Node.js dependencies..."
+echo "   Using npm directly (bypasses UPM to avoid crashes)"
 npm install
 if [ $? -eq 0 ]; then
     echo "✅ Node.js dependencies installed"
 else
     echo "❌ Failed to install Node.js dependencies"
+    echo ""
+    echo "⚠️  If you see 'panic: runtime error' or UPM crashes:"
+    echo "   This is a Replit UPM bug. See: demo-ui/REPLIT_BUILD_FIX.md"
+    echo ""
+    echo "   Quick fix:"
+    echo "   1. npm cache clean --force"
+    echo "   2. npm install"
+    echo "   3. npm run build"
+    echo ""
     exit 1
 fi
 echo ""
