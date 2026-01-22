@@ -1,0 +1,44 @@
+# Render Blueprint for Browser-Use Demo
+# This file automatically deploys both backend and frontend to Render
+
+services:
+  # Backend Service (Python/FastAPI)
+  - type: web
+    name: browser-use-backend
+    runtime: python
+    plan: free
+    region: oregon
+    buildCommand: |
+      pip install -e .
+      playwright install chromium --with-deps
+    startCommand: python main.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: FRONTEND_URL
+        fromService:
+          type: web
+          name: browser-use-frontend
+          property: host
+    healthCheckPath: /health
+
+  # Frontend Service (Next.js)
+  - type: web
+    name: browser-use-frontend
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: demo-ui
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 20.11.0
+      - key: NEXT_PUBLIC_API_URL
+        value: https://browser-use-backend.onrender.com
+      - key: NODE_ENV
+        value: production
