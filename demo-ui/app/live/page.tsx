@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { LiveDemoClient, type LiveDemoMessage } from '@/lib/websocket'
+import { checkBackendHealth, startLiveDemo as apiStartLiveDemo, getApiUrl, getDiagnosticInfo } from '@/lib/api'
 
 type ExecutionMode = 'awi' | 'permission'
 type ExecutionStatus = 'idle' | 'connecting' | 'running' | 'completed' | 'error'
@@ -71,23 +72,47 @@ export default function LiveDemoPage() {
 		setCompletionResult(null)
 
 		try {
-			// Start session on backend
-			const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-			const response = await fetch(`${apiUrl}/api/live/start`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ task, mode, target_url: targetUrl, api_key: apiKey }),
-			})
+			// Step 1: Check backend health
+			addLog('info', 'Checking backend connection...')
+			const diagnostics = getDiagnosticInfo()
+			addLog('info', `Backend URL: ${diagnostics.apiUrl}`)
 
-			if (!response.ok) {
-				throw new Error(`Failed to start session: ${response.statusText}`)
+			const healthCheck = await checkBackendHealth()
+
+			if (!healthCheck.reachable) {
+				addLog('error', `Backend health check failed: ${healthCheck.error}`)
+				addLog('error', 'Troubleshooting tips:')
+				addLog('error', '1. Check if backend is running')
+				addLog('error', '2. Verify NEXT_PUBLIC_API_URL in environment')
+				addLog('error', '3. Check browser console for CORS errors')
+				addLog('error', `4. Current backend URL: ${diagnostics.apiUrl}`)
+				setStatus('error')
+				return
 			}
 
-			const data = await response.json()
-			addLog('info', `Session created: ${data.session_id}`)
+			addLog('info', `Backend is reachable (${healthCheck.latency}ms)`)
 
-			// Connect WebSocket
-			const client = new LiveDemoClient(data.session_id, apiUrl)
+			// Step 2: Start session on backend
+			addLog('info', 'Starting session...')
+			const result = await apiStartLiveDemo({
+				task,
+				mode,
+				targetUrl,
+				apiKey,
+			})
+
+			if (!result.success || !result.sessionId) {
+				addLog('error', `Failed to start session: ${result.error}`)
+				setStatus('error')
+				return
+			}
+
+			addLog('info', `Session created: ${result.sessionId}`)
+
+			// Step 3: Connect WebSocket
+			addLog('info', 'Connecting WebSocket...')
+			const apiUrl = getApiUrl()
+			const client = new LiveDemoClient(result.sessionId, apiUrl)
 			setWsClient(client)
 
 			await client.connect(
@@ -100,11 +125,27 @@ export default function LiveDemoPage() {
 				}
 			)
 
-			// Send API key
+			addLog('info', 'WebSocket connected')
+
+			// Step 4: Send API key
 			client.sendApiKey(apiKey)
 			setStatus('running')
+			addLog('info', 'Demo started!')
 		} catch (error) {
-			addLog('error', `Failed to start: ${error}`)
+			if (error instanceof Error) {
+				addLog('error', `Failed to start: ${error.message}`)
+
+				// Provide specific troubleshooting for common errors
+				if (error.message.includes('Failed to fetch')) {
+					addLog('error', 'This is usually a CORS or network issue.')
+					addLog('error', 'Check:')
+					addLog('error', '1. Is the backend running?')
+					addLog('error', '2. Is NEXT_PUBLIC_API_URL correct?')
+					addLog('error', '3. Check browser console for detailed error')
+				}
+			} else {
+				addLog('error', `Failed to start: ${error}`)
+			}
 			setStatus('error')
 		}
 	}

@@ -2,6 +2,16 @@
 
 This guide walks you through deploying the browser-use demo server and UI on Replit.
 
+## ⚡ Quick Troubleshooting
+
+**Getting "Failed to fetch" error?** → See [REPLIT_TROUBLESHOOTING.md](REPLIT_TROUBLESHOOTING.md)
+
+Common causes:
+1. Backend not running → Click "Run" in backend Repl
+2. Wrong backend URL → Check `.env.production` in frontend
+3. CORS issue → Already configured, restart both Repls
+4. Next.js dev mode → Use production mode (already configured)
+
 ## 📋 Prerequisites
 
 - GitHub account

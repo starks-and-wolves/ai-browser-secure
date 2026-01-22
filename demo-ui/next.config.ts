@@ -10,6 +10,14 @@ const nextConfig: NextConfig = {
 		// Allow production builds even with ESLint errors (for development)
 		ignoreDuringBuilds: false,
 	},
+	// Allow Replit dev origins for /_next/* resources
+	// This fixes the "Blocked cross-origin request" error on Replit
+	experimental: {
+		allowedDevOrigins: [
+			'*.replit.dev',
+			'*.repl.co',
+		],
+	},
 }
 
 export default nextConfig

@@ -3,6 +3,7 @@ modules = ["nodejs-20"]
 [nix]
 channel = "stable-23_11"
 
+# Use production mode by default to avoid dev-only CORS issues
 [deployment]
 run = ["npm", "start"]
 deploymentTarget = "cloudrun"
@@ -10,3 +11,7 @@ deploymentTarget = "cloudrun"
 [[ports]]
 localPort = 3000
 externalPort = 80
+
+# Environment variables
+[env]
+NODE_ENV = "production"
