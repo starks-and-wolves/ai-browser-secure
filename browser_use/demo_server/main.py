@@ -3,6 +3,7 @@ FastAPI Demo Server for Browser-Use
 Serves pre-recorded demos and provides live execution capabilities
 """
 
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import logging
@@ -21,16 +22,27 @@ app = FastAPI(
 	version="0.1.0"
 )
 
+# Build allowed origins list
+allowed_origins = [
+	"http://localhost:3000",  # Local dev
+	"http://127.0.0.1:3000",
+	"http://localhost:3001",  # Local dev (alternate port)
+	"http://127.0.0.1:3001",
+	"https://*.repl.co",  # Replit domains (all subdomains)
+	"https://*.vercel.app",  # Vercel deployments
+	"https://*.onrender.com",  # Render deployments
+]
+
+# Add custom frontend URL from environment if provided
+frontend_url = os.getenv("FRONTEND_URL")
+if frontend_url:
+	allowed_origins.append(frontend_url)
+	logger.info(f"Added custom frontend URL to CORS: {frontend_url}")
+
 # Configure CORS
 app.add_middleware(
 	CORSMiddleware,
-	allow_origins=[
-		"http://localhost:3000",  # Next.js dev server
-		"http://127.0.0.1:3000",
-		"http://localhost:3001",  # Next.js dev server (alternate port)
-		"http://127.0.0.1:3001",
-		# Add production origins here when deploying
-	],
+	allow_origin_regex=r"https://.*\.repl\.co|https://.*\.vercel\.app|https://.*\.onrender\.com|http://localhost:\d+|http://127\.0\.0\.1:\d+",
 	allow_credentials=True,
 	allow_methods=["*"],
 	allow_headers=["*"],

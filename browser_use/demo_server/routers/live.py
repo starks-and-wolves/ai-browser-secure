@@ -12,6 +12,7 @@ from uuid import uuid4
 from browser_use import Agent, Browser
 from browser_use.browser.profile import BrowserProfile
 from browser_use.llm import get_default_llm
+from browser_use.demo_server.replit_config import get_replit_browser_profile, should_use_remote_browser, get_remote_browser_url
 import os
 
 logger = logging.getLogger(__name__)
@@ -177,11 +178,23 @@ async def websocket_live_demo(websocket: WebSocket, session_id: str):
 			)
 			browser = Browser(browser_profile=profile)
 		elif session["mode"] == "awi":
-			# AWI mode: simple headless browser (no demo_mode, matches test_browser_use.py)
-			browser = Browser(headless=True)
+			# AWI mode: Use optimized profile for Replit if deployed there
+			if os.getenv('REPL_ID'):
+				# Running on Replit - use optimized profile
+				optimized_profile = get_replit_browser_profile()
+				browser = Browser(browser_profile=optimized_profile)
+			else:
+				# Local/other deployment - simple headless browser
+				browser = Browser(headless=True)
 		else:
-			# Traditional mode: headless browser
-			browser = Browser(headless=True)
+			# Traditional mode: Use optimized profile for Replit if deployed there
+			if os.getenv('REPL_ID'):
+				# Running on Replit - use optimized profile
+				optimized_profile = get_replit_browser_profile()
+				browser = Browser(browser_profile=optimized_profile)
+			else:
+				# Local/other deployment - simple headless browser
+				browser = Browser(headless=True)
 
 		try:
 			# Set up LLM with user's API key
