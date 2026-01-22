@@ -25,10 +25,16 @@ dist/
 *.txt
 *.pdf
 *.csv
-*.json
 *.jsonl
 *.log
 *.bak
+
+# JSON files (but not package.json)
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+!next-env.d.ts
 
 # Node.js / npm
 node_modules/
