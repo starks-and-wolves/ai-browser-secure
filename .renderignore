@@ -1,0 +1,4 @@
+# Tell Render to ignore the Dockerfile and use native Python runtime
+Dockerfile
+Dockerfile.fast
+docker/
