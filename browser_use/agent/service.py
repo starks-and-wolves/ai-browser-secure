@@ -1115,10 +1115,14 @@ class Agent(Generic[Context, AgentStructuredOutput]):
 						title=f'{awi_name} (AWI Mode)',
 						viewport_width=1280,
 						viewport_height=720,
+						page_width=1280,
+						page_height=720,
 						scroll_x=0,
 						scroll_y=0,
-						document_height=720,
-						document_width=1280,
+						pixels_above=0,
+						pixels_below=0,
+						pixels_left=0,
+						pixels_right=0,
 					),
 				)
 				self.logger.info(f'🌐 AWI Mode: Using mock browser state (no browser running)')
