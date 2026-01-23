@@ -1,5 +1,5 @@
 """Event-driven browser session with backwards compatibility."""
-
+import os
 import asyncio
 import logging
 from functools import cached_property
@@ -1624,6 +1624,50 @@ class BrowserSession(BaseModel):
 			else:
 				target_id = page_targets_from_manager[0].target_id
 				self.logger.debug(f'📄 Using existing page: {target_id}')
+
+			cdp_init_retries = int(os.getenv('BROWSER_USE_CDP_INIT_SESSION_RETRIES', '10'))
+			cdp_init_retry_delay = float(os.getenv('BROWSER_USE_CDP_INIT_SESSION_RETRY_DELAY', '0.25'))
+			last_error: Exception | None = None
+
+			# Track failed target IDs to avoid retrying the same stale targets
+			failed_target_ids: set[str] = set()
+
+			for attempt in range(1, cdp_init_retries + 1):
+				try:
+					page_targets_from_manager = self.session_manager.get_all_page_targets()
+
+					# Filter out targets that have already failed (likely detached)
+					valid_targets = [t for t in page_targets_from_manager if t.target_id not in failed_target_ids]
+
+					if not valid_targets:
+						# No valid existing targets - create a new blank page
+						new_target = await self._cdp_client_root.send.Target.createTarget(params={'url': 'about:blank'})
+						target_id = new_target['targetId']
+						self.logger.debug(f'📄 Created new blank page: {target_id}')
+						# Wait briefly for SessionManager to process the attachedToTarget event
+						await asyncio.sleep(0.1)
+					else:
+						target_id = valid_targets[0].target_id
+						self.logger.debug(f'📄 Using existing page: {target_id}')
+
+					await self.get_or_create_cdp_session(target_id, focus=True)
+					self.logger.debug(f'📄 Agent focus set to {target_id[:8]}...')
+					last_error = None
+					break
+				except ValueError as e:
+					last_error = e
+					# Mark this target as failed so we don't retry it
+					failed_target_ids.add(target_id)
+					if attempt >= cdp_init_retries:
+						break
+					self.logger.debug(
+						f'Initial CDP session attach failed for target {target_id[:8]}... '
+						f'(attempt {attempt}/{cdp_init_retries}): {e}'
+					)
+					await asyncio.sleep(cdp_init_retry_delay)
+
+			if last_error is not None:
+				raise RuntimeError(f'Failed to get session for initial target {target_id}: {last_error}') from last_error			
 
 			# Set up initial focus using the public API
 			# Note: get_or_create_cdp_session() will wait for attach event and set focus
