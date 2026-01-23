@@ -251,6 +251,12 @@ class LocalBrowserWatchdog(BaseWatchdog):
 		elif system == 'Linux':
 			if not playwright_path:
 				playwright_path = '~/.cache/ms-playwright'
+			# Also check common alternative playwright paths (Render, Docker, etc.)
+			alt_playwright_paths = [
+				'/opt/render/project/src/.cache/ms-playwright',
+				'/root/.cache/ms-playwright',
+				'/home/*/.cache/ms-playwright',
+			]
 			patterns = [
 				'/usr/bin/google-chrome-stable',
 				'/usr/bin/google-chrome',
@@ -265,6 +271,9 @@ class LocalBrowserWatchdog(BaseWatchdog):
 				'/usr/bin/brave-browser',
 				f'{playwright_path}/chromium_headless_shell-*/chrome-linux*/chrome',
 			]
+			# Add alternative playwright paths
+			for alt_path in alt_playwright_paths:
+				patterns.append(f'{alt_path}/chromium-*/chrome-linux*/chrome')
 		elif system == 'Windows':
 			if not playwright_path:
 				playwright_path = r'%LOCALAPPDATA%\ms-playwright'
