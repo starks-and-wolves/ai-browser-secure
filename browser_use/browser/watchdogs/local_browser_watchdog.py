@@ -355,12 +355,20 @@ class LocalBrowserWatchdog(BaseWatchdog):
 		)
 
 		try:
-			stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=60.0)
-			self.logger.debug(f'[LocalBrowserWatchdog] 📦 Playwright install output: {stdout}')
+			install_timeout = float(os.environ.get('PLAYWRIGHT_INSTALL_TIMEOUT_SECONDS', '240'))
+			stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=install_timeout)
+			stdout_text = (stdout or b'').decode(errors='replace') if isinstance(stdout, (bytes, bytearray)) else str(stdout)
+			stderr_text = (stderr or b'').decode(errors='replace') if isinstance(stderr, (bytes, bytearray)) else str(stderr)
+			self.logger.debug(f'[LocalBrowserWatchdog] 📦 Playwright install stdout: {stdout_text}')
+			if stderr_text.strip():
+				self.logger.debug(f'[LocalBrowserWatchdog] 📦 Playwright install stderr: {stderr_text}')
 			browser_path = self._find_installed_browser_path()
 			if browser_path:
 				return browser_path
-			self.logger.error(f'[LocalBrowserWatchdog] ❌ Playwright local browser installation error: \n{stdout}\n{stderr}')
+			self.logger.error(
+				'[LocalBrowserWatchdog] ❌ Playwright local browser installation failed - no browser path found after install. '
+				f'cmd={" ".join(cmd)}\nstdout:\n{stdout_text}\nstderr:\n{stderr_text}'
+			)
 			raise RuntimeError(f'No local browser path found after: {" ".join(cmd)}')
 		except TimeoutError:
 			# Kill the subprocess if it times out
