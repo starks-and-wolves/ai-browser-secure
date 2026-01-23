@@ -3,6 +3,7 @@ import gc
 import inspect
 import json
 import logging
+import os
 import re
 import tempfile
 import time
@@ -178,6 +179,7 @@ class Agent(Generic[Context, AgentStructuredOutput]):
 		flash_mode: bool = False,
 		demo_mode: bool | None = None,
 		awi_mode: bool = False,
+		awi_registration_config: dict[str, Any] | None = None,
 		max_history_items: int | None = None,
 		page_extraction_llm: BaseChatModel | None = None,
 		fallback_llm: BaseChatModel | None = None,
@@ -402,6 +404,7 @@ class Agent(Generic[Context, AgentStructuredOutput]):
 
 		# AWI Mode initialization
 		self.awi_mode: bool = awi_mode
+		self.awi_registration_config: dict[str, Any] | None = awi_registration_config
 		self.awi_manager: AWIManager | None = None
 		self._awi_manifest: dict[str, Any] | None = None
 
@@ -2680,6 +2683,88 @@ YOU must explicitly call 'done' when finished.
 				self.logger.warning(f'Failed to get AWI action history: {e}')
 		return None
 
+	async def _ensure_browser_started(self) -> None:
+		"""
+		Lazily start the browser if it hasn't been started yet.
+
+		This is called when AWI mode is active but a task requires browser navigation
+		to a non-AWI website. The browser is started on-demand to save resources.
+		"""
+		if getattr(self, '_browser_started', False):
+			return  # Browser already started
+
+		self.logger.info('🌐 Lazy browser initialization: Starting browser for non-AWI navigation...')
+		await self.browser_session.start()
+		self._browser_started = True
+
+		# Initialize user approval watchdog if available
+		if self.browser_session._user_approval_watchdog:
+			self.browser_session._user_approval_watchdog.update_agent_context(
+				task=self.task,
+				step_number=self.state.n_steps,
+				max_steps=100,  # Default max_steps for lazy init
+			)
+
+		self.logger.info('✅ Browser started successfully (lazy initialization)')
+
+	async def _ensure_browser_for_actions(self, actions: list['ActionModel']) -> None:
+		"""
+		Check if any action requires browser and lazily start it if needed.
+
+		This is called before executing actions to ensure the browser is available
+		when AWI mode is active but a navigation to a non-AWI site is requested.
+		"""
+		# If browser is already started, nothing to do
+		if getattr(self, '_browser_started', False):
+			return
+
+		# Check if any action requires browser (navigate, click, scroll, etc.)
+		browser_required = False
+		for action in actions:
+			action_data = action.model_dump(exclude_unset=True)
+			action_name = next(iter(action_data.keys())) if action_data else None
+
+			# AWI execute action doesn't need browser
+			if action_name == 'awi_execute':
+				continue
+
+			# Done action doesn't need browser
+			if action_name == 'done':
+				continue
+
+			# Navigate action - check if target URL has AWI
+			if action_name == 'navigate':
+				params = action_data.get('navigate', {})
+				target_url = params.get('url', '')
+				if target_url:
+					# Check if target URL is the same domain as our AWI site
+					if self.awi_manager and self._awi_manifest:
+						awi_base_url = self.awi_manager.base_url or ''
+						# Extract domain from URLs for comparison
+						from urllib.parse import urlparse
+						awi_domain = urlparse(awi_base_url).netloc
+						target_domain = urlparse(target_url).netloc
+						if awi_domain and target_domain and awi_domain == target_domain:
+							# Same domain as AWI site - no browser needed
+							self.logger.debug(f'Navigate to {target_url} - same AWI domain, no browser needed')
+							continue
+
+					# Different domain or no AWI - browser required
+					self.logger.info(f'🔍 Navigate to non-AWI site detected: {target_url}')
+					browser_required = True
+					break
+
+			# All other browser actions require browser
+			if action_name in ['click', 'input_text', 'scroll', 'go_back', 'switch_tab',
+							   'close_tab', 'send_keys', 'upload_file', 'extract', 'search',
+							   'select_dropdown_option', 'get_dropdown_options', 'screenshot']:
+				browser_required = True
+				break
+
+		if browser_required:
+			self.logger.info('🌐 Browser action detected - starting browser lazily...')
+			await self._ensure_browser_started()
+
 	async def _try_awi_discovery(self, url: str) -> bool:
 		"""
 		Try to discover and set up AWI for the given URL.
@@ -2758,9 +2843,24 @@ YOU must explicitly call 'done' when finished.
 
 				return True
 
-			# Step 3: No existing credentials - show permission dialog
-			dialog = AWIPermissionDialog(manifest)
-			approval = dialog.show_and_get_permissions()
+			# Step 3: No existing credentials - get approval (interactive or from config)
+			approval = None
+
+			# Check if we have pre-configured registration (headless mode)
+			if self.awi_registration_config and self.awi_registration_config.get('auto_approve', False):
+				# Use pre-configured values (bypasses stdin prompts for headless environments)
+				self.logger.info('🤖 Using pre-configured AWI registration (headless mode)')
+				approval = {
+					'approved': True,
+					'agent_name': self.awi_registration_config.get('agent_name', 'BrowserUseAgent'),
+					'permissions': self.awi_registration_config.get('permissions', ['read', 'write']),
+				}
+				self.logger.info(f"   Agent name: {approval['agent_name']}")
+				self.logger.info(f"   Permissions: {', '.join(approval['permissions'])}")
+			else:
+				# Interactive mode - show permission dialog (requires stdin)
+				dialog = AWIPermissionDialog(manifest)
+				approval = dialog.show_and_get_permissions()
 
 			if not approval or not approval['approved']:
 				self.logger.info('User declined AWI registration, using traditional DOM parsing')
@@ -2793,8 +2893,10 @@ YOU must explicitly call 'done' when finished.
 				manifest_version=manifest.get('awi', {}).get('version'),
 			)
 
-			AWIPermissionDialog.show_registration_success(agent_info)
-			AWIPermissionDialog.show_awi_mode_banner()
+			# Only show interactive dialogs if not in headless mode
+			if not (self.awi_registration_config and self.awi_registration_config.get('auto_approve', False)):
+				AWIPermissionDialog.show_registration_success(agent_info)
+				AWIPermissionDialog.show_awi_mode_banner()
 
 			self.logger.info(f'✅ AWI Mode activated for {url}')
 			self.logger.info(f"   Agent ID: {agent_info.get('id')}")
@@ -2898,26 +3000,19 @@ YOU must explicitly call 'done' when finished.
 
 			# Log startup message on first step (only if we haven't already done steps)
 			self._log_first_step_startup()
-			# Start browser session and attach watchdogs
-			await self.browser_session.start()
 
-			# Initialize user approval watchdog with task context early
-			# This ensures the task is shown in approval popups even for initial navigations
-			if self.browser_session._user_approval_watchdog:
-				self.browser_session._user_approval_watchdog.update_agent_context(
-					task=self.task,
-					step_number=self.state.n_steps,
-					max_steps=max_steps,
-				)
-
-			# Try AWI discovery if AWI mode is enabled and we have an initial URL
+			# Try AWI discovery FIRST if AWI mode is enabled and we have an initial URL
+			# This allows us to skip browser startup entirely if AWI is available
 			awi_is_active = False
+			self._browser_started = False  # Track if browser has been started
+
 			if self.awi_mode and self.initial_url:
+				self.logger.info('🔍 AWI Mode: Attempting AWI discovery before browser startup...')
 				awi_activated = await self._try_awi_discovery(self.initial_url)
 				if awi_activated:
 					awi_is_active = True
 					self.logger.info('🚀 AWI Mode active - will use structured API instead of DOM parsing')
-					self.logger.info('   Skipping browser navigation - agent will use API calls directly')
+					self.logger.info('   ⏭️  Skipping browser startup (no Playwright/CDP required)')
 
 					# Update task context for AWI mode
 					awi_context = self._get_awi_context_message()
@@ -2927,6 +3022,27 @@ YOU must explicitly call 'done' when finished.
 
 					# Register generic AWI execution tool
 					self._register_generic_awi_tool()
+
+			# Start browser session only if AWI is NOT active
+			# In AWI-only deployments we intentionally skip browser startup (no Playwright/CDP required).
+			awi_only_mode = os.getenv('BROWSER_USE_AWI_ONLY', '').strip().lower() in {'1', 'true', 'yes', 'on'}
+			if awi_is_active:
+				self.logger.info('🌐 Browser startup deferred - AWI mode handles all interactions via API')
+			elif awi_only_mode and self.awi_mode:
+				self.logger.info('AWI-only mode enabled (BROWSER_USE_AWI_ONLY=1): skipping browser startup')
+			else:
+				await self.browser_session.start()
+				self._browser_started = True
+
+			# Initialize user approval watchdog with task context early
+			# This ensures the task is shown in approval popups even for initial navigations
+			if self._browser_started:
+				if self.browser_session._user_approval_watchdog:
+					self.browser_session._user_approval_watchdog.update_agent_context(
+						task=self.task,
+						step_number=self.state.n_steps,
+						max_steps=max_steps,
+					)
 
 			if self._demo_mode_enabled:
 				await self._demo_mode_log(f'Started task: {self.task}', 'info', {'tag': 'task'})
@@ -3089,6 +3205,10 @@ YOU must explicitly call 'done' when finished.
 		results: list[ActionResult] = []
 		time_elapsed = 0
 		total_actions = len(actions)
+
+		# Check if any action requires browser (navigate to non-AWI site)
+		# and lazily start browser if needed
+		await self._ensure_browser_for_actions(actions)
 
 		assert self.browser_session is not None, 'BrowserSession is not set up'
 		try:
@@ -3462,7 +3582,11 @@ YOU must explicitly call 'done' when finished.
 		self.state.session_initialized = True
 
 		# Initialize browser session
-		await self.browser_session.start()
+		awi_only_mode = os.getenv('BROWSER_USE_AWI_ONLY', '').strip().lower() in {'1', 'true', 'yes', 'on'}
+		if awi_only_mode and self.awi_mode:
+			self.logger.info('AWI-only mode enabled (BROWSER_USE_AWI_ONLY=1): skipping browser startup for rerun')
+		else:
+			await self.browser_session.start()
 
 		results = []
 

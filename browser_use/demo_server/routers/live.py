@@ -53,12 +53,20 @@ class WebSocketLogHandler(logging.Handler):
 active_sessions: dict[str, dict] = {}
 
 
+class AWIRegistrationConfig(BaseModel):
+	"""Configuration for AWI agent registration (bypasses interactive prompts)"""
+	agent_name: str = Field(default="BrowserUseAgent", description="Name for the registered agent")
+	permissions: list[str] = Field(default=["read", "write"], description="Permissions to request")
+	auto_approve: bool = Field(default=True, description="Auto-approve registration without prompts")
+
+
 class LiveDemoRequest(BaseModel):
 	"""Request model for starting a live demo"""
 	task: str = Field(..., min_length=10, max_length=500, description="Task for the agent to complete")
 	mode: Literal["awi", "permission"] = Field(..., description="Execution mode")
 	target_url: str = Field(..., description="Target website URL")
 	api_key: str = Field(..., min_length=20, description="LLM API key (never logged)")
+	awi_config: AWIRegistrationConfig | None = Field(default=None, description="AWI registration config (for headless mode)")
 
 
 class LiveDemoResponse(BaseModel):
@@ -92,7 +100,8 @@ async def start_live_demo(request: LiveDemoRequest):
 		"mode": request.mode,
 		"target_url": request.target_url,
 		"status": "pending",
-		"created_at": asyncio.get_event_loop().time()
+		"created_at": asyncio.get_event_loop().time(),
+		"awi_config": request.awi_config.model_dump() if request.awi_config else None
 	}
 
 	logger.info(f"Created live demo session: {session_id} (mode={request.mode})")
@@ -231,6 +240,9 @@ async def websocket_live_demo(websocket: WebSocket, session_id: str):
 
 			if session["mode"] == "awi":
 				agent_kwargs["awi_mode"] = True
+				# Pass AWI registration config for headless mode (bypasses stdin prompts)
+				if session.get("awi_config"):
+					agent_kwargs["awi_registration_config"] = session["awi_config"]
 
 			# Create agent
 			agent = Agent(**agent_kwargs)

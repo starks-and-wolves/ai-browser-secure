@@ -1,6 +1,7 @@
 """Event-driven browser session with backwards compatibility."""
-import os
+
 import asyncio
+import os
 import logging
 from functools import cached_property
 from pathlib import Path
@@ -833,7 +834,11 @@ class BrowserSession(BaseModel):
 				if url.startswith('http') and current_url.startswith('http')
 				else False
 			)
-			timeout = 2.0 if same_domain else 4.0
+			# Use environment variables for configurable timeouts
+			# Default: 2s for same-domain (cached resources), 10s for cross-domain (cold starts, slow servers)
+			same_domain_timeout = float(os.getenv('BROWSER_USE_PAGE_READINESS_TIMEOUT_SAME_DOMAIN', '2.0'))
+			cross_domain_timeout = float(os.getenv('BROWSER_USE_PAGE_READINESS_TIMEOUT_CROSS_DOMAIN', '10.0'))
+			timeout = same_domain_timeout if same_domain else cross_domain_timeout
 
 		# Start performance tracking
 		nav_start_time = asyncio.get_event_loop().time()
@@ -1667,16 +1672,7 @@ class BrowserSession(BaseModel):
 					await asyncio.sleep(cdp_init_retry_delay)
 
 			if last_error is not None:
-				raise RuntimeError(f'Failed to get session for initial target {target_id}: {last_error}') from last_error			
-
-			# Set up initial focus using the public API
-			# Note: get_or_create_cdp_session() will wait for attach event and set focus
-			try:
-				await self.get_or_create_cdp_session(target_id, focus=True)
-				# agent_focus_target_id is now set by get_or_create_cdp_session
-				self.logger.debug(f'📄 Agent focus set to {target_id[:8]}...')
-			except ValueError as e:
-				raise RuntimeError(f'Failed to get session for initial target {target_id}: {e}') from e
+				raise RuntimeError(f'Failed to get session for initial target {target_id}: {last_error}') from last_error
 
 			# Note: Lifecycle monitoring is enabled automatically in SessionManager._handle_target_attached()
 			# when targets attach, so no manual enablement needed!

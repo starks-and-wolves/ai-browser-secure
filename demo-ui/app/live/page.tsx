@@ -51,6 +51,11 @@ export default function LiveDemoPage() {
 	const [backendUrl, setBackendUrl] = useState(getDefaultBackendUrl())
 	const [showBackendConfig, setShowBackendConfig] = useState(false)
 
+	// AWI Registration config (for headless mode)
+	const [awiAgentName, setAwiAgentName] = useState('BrowserUseAgent')
+	const [awiPermissions, setAwiPermissions] = useState<string[]>(['read', 'write'])
+	const [showAwiConfig, setShowAwiConfig] = useState(false)
+
 	// Execution state
 	const [status, setStatus] = useState<ExecutionStatus>('idle')
 	const [logs, setLogs] = useState<LogEntry[]>([])
@@ -77,6 +82,9 @@ export default function LiveDemoPage() {
 	useEffect(() => {
 		if (mode === 'awi') {
 			setTargetUrl('https://ai-browser-security.onrender.com/')
+			setShowAwiConfig(true) // Show AWI config by default in AWI mode
+		} else {
+			setShowAwiConfig(false)
 		}
 	}, [mode])
 
@@ -128,6 +136,12 @@ export default function LiveDemoPage() {
 				targetUrl,
 				apiKey,
 				backendUrl,
+				// Pass AWI registration config for headless mode
+				awiConfig: mode === 'awi' ? {
+					agent_name: awiAgentName,
+					permissions: awiPermissions,
+					auto_approve: true,
+				} : undefined,
 			})
 
 			if (!result.success || !result.sessionId) {
@@ -373,6 +387,19 @@ export default function LiveDemoPage() {
 						<div className="bg-gray-800 rounded-lg p-6 space-y-6">
 							<h2 className="text-xl font-semibold">Configuration</h2>
 
+							{/* Demo Warning Note */}
+							<div className="bg-yellow-900/30 border border-yellow-500/50 rounded-lg p-4">
+								<div className="flex items-start gap-3">
+									<span className="text-yellow-400 text-lg">⚠️</span>
+									<div className="text-sm text-yellow-200">
+										<p className="font-medium mb-1">Demo Environment Notice</p>
+										<p className="text-yellow-300/80">
+											This is a demo website running on limited resources. Some actions may cause resource spikes and might not complete successfully. For production use, please deploy with adequate resources.
+										</p>
+									</div>
+								</div>
+							</div>
+
 							{/* Mode Selector */}
 							<div>
 								<label className="block text-sm font-medium mb-2">Execution Mode</label>
@@ -461,6 +488,80 @@ export default function LiveDemoPage() {
 									Your API key is never stored. Used only for this execution.
 								</p>
 							</div>
+
+							{/* AWI Registration Settings (only shown in AWI mode) */}
+							{mode === 'awi' && (
+								<div className="border-t border-gray-700 pt-4">
+									<button
+										onClick={() => setShowAwiConfig(!showAwiConfig)}
+										className="flex items-center justify-between w-full text-sm font-medium text-gray-300 hover:text-white transition-colors"
+										type="button"
+									>
+										<span>🤖 AWI Agent Registration</span>
+										<span className="text-xs">{showAwiConfig ? '▼' : '▶'}</span>
+									</button>
+
+									{showAwiConfig && (
+										<div className="mt-4 space-y-3">
+											<div className="bg-blue-900/30 border border-blue-500/50 rounded p-3 text-xs text-blue-200">
+												<p className="font-medium mb-1">ℹ️ Headless Registration</p>
+												<p>These settings auto-register the agent without interactive prompts (required for server deployments).</p>
+											</div>
+
+											<div>
+												<label htmlFor="awi-agent-name" className="block text-xs font-medium mb-2 text-gray-400">
+													Agent Name
+												</label>
+												<input
+													id="awi-agent-name"
+													type="text"
+													value={awiAgentName}
+													onChange={(e) => setAwiAgentName(e.target.value)}
+													className="w-full px-3 py-2 text-sm bg-gray-900 border border-gray-700 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
+													placeholder="BrowserUseAgent"
+													disabled={status !== 'idle'}
+												/>
+											</div>
+
+											<div>
+												<label className="block text-xs font-medium mb-2 text-gray-400">
+													Permissions
+												</label>
+												<div className="flex flex-wrap gap-2">
+													{['read', 'write', 'delete'].map((perm) => (
+														<label
+															key={perm}
+															className={`flex items-center gap-2 px-3 py-2 rounded cursor-pointer transition-colors ${
+																awiPermissions.includes(perm)
+																	? 'bg-blue-600 text-white'
+																	: 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+															} ${status !== 'idle' ? 'opacity-50 cursor-not-allowed' : ''}`}
+														>
+															<input
+																type="checkbox"
+																checked={awiPermissions.includes(perm)}
+																onChange={(e) => {
+																	if (e.target.checked) {
+																		setAwiPermissions([...awiPermissions, perm])
+																	} else {
+																		setAwiPermissions(awiPermissions.filter((p) => p !== perm))
+																	}
+																}}
+																disabled={status !== 'idle'}
+																className="sr-only"
+															/>
+															<span className="text-sm capitalize">{perm}</span>
+														</label>
+													))}
+												</div>
+												<p className="text-xs text-gray-500 mt-2">
+													Selected: {awiPermissions.length > 0 ? awiPermissions.join(', ') : 'none'}
+												</p>
+											</div>
+										</div>
+									)}
+								</div>
+							)}
 
 							{/* Backend Settings */}
 							<div className="border-t border-gray-700 pt-4">

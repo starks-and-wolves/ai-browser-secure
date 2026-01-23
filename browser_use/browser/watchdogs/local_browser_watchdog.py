@@ -354,27 +354,36 @@ class LocalBrowserWatchdog(BaseWatchdog):
 			stderr=asyncio.subprocess.PIPE,
 		)
 
+		install_timeout = float(os.getenv('BROWSER_USE_PLAYWRIGHT_INSTALL_TIMEOUT', '600.0'))
+
 		try:
-			install_timeout = float(os.environ.get('PLAYWRIGHT_INSTALL_TIMEOUT_SECONDS', '240'))
 			stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=install_timeout)
-			stdout_text = (stdout or b'').decode(errors='replace') if isinstance(stdout, (bytes, bytearray)) else str(stdout)
-			stderr_text = (stderr or b'').decode(errors='replace') if isinstance(stderr, (bytes, bytearray)) else str(stderr)
-			self.logger.debug(f'[LocalBrowserWatchdog] 📦 Playwright install stdout: {stdout_text}')
+			stdout_text = stdout.decode(errors='replace') if isinstance(stdout, (bytes, bytearray)) else str(stdout)
+			stderr_text = stderr.decode(errors='replace') if isinstance(stderr, (bytes, bytearray)) else str(stderr)
+			self.logger.info(
+				f'[LocalBrowserWatchdog] 📦 Playwright install finished (timeout={install_timeout}s): {" ".join(cmd)}'
+			)
+			if stdout_text.strip():
+				self.logger.debug(f'[LocalBrowserWatchdog] 📦 Playwright install stdout:\n{stdout_text}')
 			if stderr_text.strip():
-				self.logger.debug(f'[LocalBrowserWatchdog] 📦 Playwright install stderr: {stderr_text}')
+				self.logger.debug(f'[LocalBrowserWatchdog] 📦 Playwright install stderr:\n{stderr_text}')
 			browser_path = self._find_installed_browser_path()
 			if browser_path:
 				return browser_path
 			self.logger.error(
-				'[LocalBrowserWatchdog] ❌ Playwright local browser installation failed - no browser path found after install. '
-				f'cmd={" ".join(cmd)}\nstdout:\n{stdout_text}\nstderr:\n{stderr_text}'
+				'[LocalBrowserWatchdog] ❌ Playwright install completed but no browser path was found. '
+				f'Command: {" ".join(cmd)}\nstdout:\n{stdout_text}\nstderr:\n{stderr_text}'
 			)
 			raise RuntimeError(f'No local browser path found after: {" ".join(cmd)}')
 		except TimeoutError:
 			# Kill the subprocess if it times out
 			process.kill()
 			await process.wait()
-			raise RuntimeError('Timeout getting browser path from playwright')
+			raise RuntimeError(
+				'Timeout getting browser path from playwright. '
+				f'Command: {" ".join(cmd)}. '
+				f'Increase BROWSER_USE_PLAYWRIGHT_INSTALL_TIMEOUT (current={install_timeout}s).'
+			)
 		except Exception as e:
 			# Make sure subprocess is terminated
 			if process.returncode is None:

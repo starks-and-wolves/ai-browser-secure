@@ -81,6 +81,15 @@ export async function checkBackendHealth(apiUrl?: string): Promise<{
 }
 
 /**
+ * AWI Registration config for headless mode
+ */
+export interface AWIRegistrationConfig {
+	agent_name: string
+	permissions: string[]
+	auto_approve: boolean
+}
+
+/**
  * Start a live demo session
  */
 export async function startLiveDemo(params: {
@@ -89,6 +98,7 @@ export async function startLiveDemo(params: {
 	targetUrl: string
 	apiKey: string
 	backendUrl?: string
+	awiConfig?: AWIRegistrationConfig
 }): Promise<{
 	success: boolean
 	sessionId?: string
@@ -97,17 +107,24 @@ export async function startLiveDemo(params: {
 	const apiUrl = params.backendUrl || getApiUrl()
 
 	try {
+		const requestBody: Record<string, unknown> = {
+			task: params.task,
+			mode: params.mode,
+			target_url: params.targetUrl,
+			api_key: params.apiKey,
+		}
+
+		// Include AWI config for AWI mode (enables headless registration)
+		if (params.mode === 'awi' && params.awiConfig) {
+			requestBody.awi_config = params.awiConfig
+		}
+
 		const response = await fetch(`${apiUrl}/api/live/start`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
 			},
-			body: JSON.stringify({
-				task: params.task,
-				mode: params.mode,
-				target_url: params.targetUrl,
-				api_key: params.apiKey,
-			}),
+			body: JSON.stringify(requestBody),
 		})
 
 		if (!response.ok) {
