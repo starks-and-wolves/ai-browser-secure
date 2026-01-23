@@ -1091,14 +1091,50 @@ class Agent(Generic[Context, AgentStructuredOutput]):
 
 		assert self.browser_session is not None, 'BrowserSession is not set up'
 
-		# In AWI mode with active manager, skip expensive browser state collection
+# 		In AWI mode with active manager, skip expensive browser state collection
 		# AWI agents don't need DOM/screenshots as they use structured APIs
 		if await self._is_awi_available():
 			self.logger.debug(f'🌐 Step {self.state.n_steps}: Skipping browser state (AWI mode active)')
-			# Return minimal browser state without screenshot or DOM processing
+
+			# If browser is not started, create a minimal mock state for AWI mode
+			if not getattr(self, '_browser_started', False):
+				from browser_use.browser.views import BrowserStateSummary, PageInfo, TabInfo
+				from browser_use.dom.views import SerializedDOMState
+
+				# Create minimal browser state for AWI-only mode (no browser running)
+				awi_url = self.awi_manager.base_url if self.awi_manager else self.initial_url or ''
+				awi_name = self._awi_manifest.get('awi', {}).get('name', 'AWI Site') if self._awi_manifest else 'AWI Site'
+				browser_state_summary = BrowserStateSummary(
+					url=awi_url,
+					title=f'{awi_name} (AWI Mode)',
+					tabs=[TabInfo(url=awi_url, title=f'{awi_name} (AWI Mode)', target_id='awi_mock_tab')],
+					dom_state=SerializedDOMState(_root=None, selector_map={}),
+					screenshot=None,
+					page_info=PageInfo(
+						url=awi_url,
+						title=f'{awi_name} (AWI Mode)',
+						viewport_width=1280,
+						viewport_height=720,
+						scroll_x=0,
+						scroll_y=0,
+						document_height=720,
+						document_width=1280,
+					),
+				)
+				self.logger.info(f'🌐 AWI Mode: Using mock browser state (no browser running)')
+			else:
+				# Browser is running, get minimal state
+				browser_state_summary = await self.browser_session.get_browser_state_summary(
+					include_screenshot=False,  # Skip screenshot in AWI mode
+					include_recent_events=False,  # Skip events in AWI mode
+				)
+		elif not getattr(self, '_browser_started', False):
+			# Browser not started and not in AWI mode - this shouldn't happen, but handle gracefully
+			self.logger.warning(f'⚠️ Step {self.state.n_steps}: Browser not started, starting now...')
+			await self._ensure_browser_started()
 			browser_state_summary = await self.browser_session.get_browser_state_summary(
-				include_screenshot=False,  # Skip screenshot in AWI mode
-				include_recent_events=False,  # Skip events in AWI mode
+				include_screenshot=True,
+				include_recent_events=self.include_recent_events,
 			)
 		else:
 			self.logger.debug(f'🌐 Step {self.state.n_steps}: Getting browser state...')
