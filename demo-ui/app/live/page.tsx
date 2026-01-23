@@ -6,7 +6,6 @@ import { motion } from 'framer-motion'
 import { LiveDemoClient, type LiveDemoMessage } from '@/lib/websocket'
 import { checkBackendHealth, startLiveDemo as apiStartLiveDemo, getApiUrl, getDiagnosticInfo } from '@/lib/api'
 
-type ExecutionMode = 'awi' | 'permission'
 type ExecutionStatus = 'idle' | 'connecting' | 'running' | 'completed' | 'error'
 
 interface LogEntry {
@@ -44,7 +43,6 @@ export default function LiveDemoPage() {
 	}
 
 	// Form state
-	const [mode, setMode] = useState<ExecutionMode>('awi')
 	const [apiKey, setApiKey] = useState('')
 	const [task, setTask] = useState('List the top 3 blog posts, then add a comment, \'Great post!\' to the first one. After adding the comment, end the process')
 	const [targetUrl, setTargetUrl] = useState('https://blog.anthropic.com')
@@ -80,13 +78,9 @@ export default function LiveDemoPage() {
 
 	// Set pre-configured URL for AWI mode
 	useEffect(() => {
-		if (mode === 'awi') {
-			setTargetUrl('https://ai-browser-security.onrender.com/')
-			setShowAwiConfig(true) // Show AWI config by default in AWI mode
-		} else {
-			setShowAwiConfig(false)
-		}
-	}, [mode])
+		setTargetUrl('https://ai-browser-security.onrender.com/')
+		setShowAwiConfig(true) // Show AWI config by default in AWI mode
+	}, [])
 
 	const addLog = (type: string, message: string) => {
 		setLogs((prev) => [
@@ -132,16 +126,16 @@ export default function LiveDemoPage() {
 			addLog('info', 'Starting session...')
 			const result = await apiStartLiveDemo({
 				task,
-				mode,
+				mode: 'awi',
 				targetUrl,
 				apiKey,
 				backendUrl,
-				// Pass AWI registration config for headless mode
-				awiConfig: mode === 'awi' ? {
+				// Pass AWI registration config
+				awiConfig: {
 					agent_name: awiAgentName,
 					permissions: awiPermissions,
 					auto_approve: true,
-				} : undefined,
+				},
 			})
 
 			if (!result.success || !result.sessionId) {
@@ -340,7 +334,7 @@ export default function LiveDemoPage() {
 						<div>
 							<h1 className="text-3xl font-bold">Live Demo</h1>
 							<p className="text-gray-400 mt-1">
-								Run browser-use agent with AWI or Permission mode
+								Run browser-use agent with AWI mode
 							</p>
 						</div>
 						<div className="flex items-center gap-4">
@@ -400,35 +394,6 @@ export default function LiveDemoPage() {
 								</div>
 							</div>
 
-							{/* Mode Selector */}
-							<div>
-								<label className="block text-sm font-medium mb-2">Execution Mode</label>
-								<div className="flex gap-4">
-									<button
-										onClick={() => setMode('awi')}
-										className={`flex-1 px-4 py-3 rounded-lg font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-											mode === 'awi'
-												? 'bg-blue-600 text-white'
-												: 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-										}`}
-										disabled={status !== 'idle'}
-									>
-										AWI Mode
-									</button>
-									<button
-										onClick={() => setMode('permission')}
-										className={`flex-1 px-4 py-3 rounded-lg font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-											mode === 'permission'
-												? 'bg-blue-600 text-white'
-												: 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-										}`}
-										disabled={status !== 'idle'}
-									>
-										Permission Mode
-									</button>
-								</div>
-							</div>
-
 							{/* Target URL */}
 							<div>
 								<label htmlFor="target-url" className="block text-sm font-medium mb-2">
@@ -439,19 +404,15 @@ export default function LiveDemoPage() {
 									type="url"
 									value={targetUrl}
 									onChange={(e) => setTargetUrl(e.target.value)}
-									readOnly={mode === 'awi'}
-									className={`w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-white ${
-										mode === 'awi' ? 'cursor-not-allowed opacity-75' : ''
-									}`}
+									readOnly
+									className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-white cursor-not-allowed opacity-75"
 									placeholder="https://example.com"
 									disabled={status !== 'idle'}
 								/>
-								{mode === 'awi' && (
-									<p className="text-sm text-green-400 mt-2 flex items-center gap-2">
-										<span>✓</span>
-										<span>This website has AWI (Agent Web Interface) configured and ready</span>
-									</p>
-								)}
+								<p className="text-sm text-green-400 mt-2 flex items-center gap-2">
+									<span>✓</span>
+									<span>This website has AWI (Agent Web Interface) configured and ready</span>
+								</p>
 							</div>
 
 							{/* Task */}
@@ -489,79 +450,77 @@ export default function LiveDemoPage() {
 								</p>
 							</div>
 
-							{/* AWI Registration Settings (only shown in AWI mode) */}
-							{mode === 'awi' && (
-								<div className="border-t border-gray-700 pt-4">
-									<button
-										onClick={() => setShowAwiConfig(!showAwiConfig)}
-										className="flex items-center justify-between w-full text-sm font-medium text-gray-300 hover:text-white transition-colors"
-										type="button"
-									>
-										<span>🤖 AWI Agent Registration</span>
-										<span className="text-xs">{showAwiConfig ? '▼' : '▶'}</span>
-									</button>
+							{/* AWI Registration Settings */}
+							<div className="border-t border-gray-700 pt-4">
+								<button
+									onClick={() => setShowAwiConfig(!showAwiConfig)}
+									className="flex items-center justify-between w-full text-sm font-medium text-gray-300 hover:text-white transition-colors"
+									type="button"
+								>
+									<span>🤖 AWI Agent Registration</span>
+									<span className="text-xs">{showAwiConfig ? '▼' : '▶'}</span>
+								</button>
 
-									{showAwiConfig && (
-										<div className="mt-4 space-y-3">
-											<div className="bg-blue-900/30 border border-blue-500/50 rounded p-3 text-xs text-blue-200">
-												<p className="font-medium mb-1">ℹ️ Headless Registration</p>
-												<p>These settings auto-register the agent without interactive prompts (required for server deployments).</p>
-											</div>
-
-											<div>
-												<label htmlFor="awi-agent-name" className="block text-xs font-medium mb-2 text-gray-400">
-													Agent Name
-												</label>
-												<input
-													id="awi-agent-name"
-													type="text"
-													value={awiAgentName}
-													onChange={(e) => setAwiAgentName(e.target.value)}
-													className="w-full px-3 py-2 text-sm bg-gray-900 border border-gray-700 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
-													placeholder="BrowserUseAgent"
-													disabled={status !== 'idle'}
-												/>
-											</div>
-
-											<div>
-												<label className="block text-xs font-medium mb-2 text-gray-400">
-													Permissions
-												</label>
-												<div className="flex flex-wrap gap-2">
-													{['read', 'write', 'delete'].map((perm) => (
-														<label
-															key={perm}
-															className={`flex items-center gap-2 px-3 py-2 rounded cursor-pointer transition-colors ${
-																awiPermissions.includes(perm)
-																	? 'bg-blue-600 text-white'
-																	: 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-															} ${status !== 'idle' ? 'opacity-50 cursor-not-allowed' : ''}`}
-														>
-															<input
-																type="checkbox"
-																checked={awiPermissions.includes(perm)}
-																onChange={(e) => {
-																	if (e.target.checked) {
-																		setAwiPermissions([...awiPermissions, perm])
-																	} else {
-																		setAwiPermissions(awiPermissions.filter((p) => p !== perm))
-																	}
-																}}
-																disabled={status !== 'idle'}
-																className="sr-only"
-															/>
-															<span className="text-sm capitalize">{perm}</span>
-														</label>
-													))}
-												</div>
-												<p className="text-xs text-gray-500 mt-2">
-													Selected: {awiPermissions.length > 0 ? awiPermissions.join(', ') : 'none'}
-												</p>
-											</div>
+								{showAwiConfig && (
+									<div className="mt-4 space-y-3">
+										<div className="bg-blue-900/30 border border-blue-500/50 rounded p-3 text-xs text-blue-200">
+											<p className="font-medium mb-1">ℹ️ Headless Registration</p>
+											<p>These settings auto-register the agent without interactive prompts (required for server deployments).</p>
 										</div>
-									)}
-								</div>
-							)}
+
+										<div>
+											<label htmlFor="awi-agent-name" className="block text-xs font-medium mb-2 text-gray-400">
+												Agent Name
+											</label>
+											<input
+												id="awi-agent-name"
+												type="text"
+												value={awiAgentName}
+												onChange={(e) => setAwiAgentName(e.target.value)}
+												className="w-full px-3 py-2 text-sm bg-gray-900 border border-gray-700 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
+												placeholder="BrowserUseAgent"
+												disabled={status !== 'idle'}
+											/>
+										</div>
+
+										<div>
+											<label className="block text-xs font-medium mb-2 text-gray-400">
+												Permissions
+											</label>
+											<div className="flex flex-wrap gap-2">
+												{['read', 'write', 'delete'].map((perm) => (
+													<label
+														key={perm}
+														className={`flex items-center gap-2 px-3 py-2 rounded cursor-pointer transition-colors ${
+															awiPermissions.includes(perm)
+																? 'bg-blue-600 text-white'
+																: 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+														} ${status !== 'idle' ? 'opacity-50 cursor-not-allowed' : ''}`}
+													>
+														<input
+															type="checkbox"
+															checked={awiPermissions.includes(perm)}
+															onChange={(e) => {
+																if (e.target.checked) {
+																	setAwiPermissions([...awiPermissions, perm])
+																} else {
+																	setAwiPermissions(awiPermissions.filter((p) => p !== perm))
+																}
+															}}
+															disabled={status !== 'idle'}
+															className="sr-only"
+														/>
+														<span className="text-sm capitalize">{perm}</span>
+													</label>
+												))}
+											</div>
+											<p className="text-xs text-gray-500 mt-2">
+												Selected: {awiPermissions.length > 0 ? awiPermissions.join(', ') : 'none'}
+											</p>
+										</div>
+									</div>
+								)}
+							</div>
 
 							{/* Start/Stop Button */}
 							<div className="flex gap-4">
