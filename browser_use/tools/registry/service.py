@@ -372,7 +372,7 @@ class Registry(Generic[Context]):
 			if action_name == 'input':
 				special_context['sensitive_data'] = sensitive_data
 
-			# Add CDP-related parameters if browser_session is available
+			# Add CDP-related parameters if browser_session is available and connected
 			if browser_session:
 				# Add page_url
 				try:
@@ -380,9 +380,16 @@ class Registry(Generic[Context]):
 				except Exception:
 					special_context['page_url'] = None
 
-				# Add cdp_client
-				special_context['cdp_client'] = browser_session.cdp_client
-
+				# Add cdp_client only if browser is actually connected (has CDP client)
+				# This allows AWI-only mode to work without browser
+				try:
+					if browser_session._cdp_client_root is not None:
+						special_context['cdp_client'] = browser_session.cdp_client
+					else:
+						special_context['cdp_client'] = None
+				except Exception:
+					special_context['cdp_client'] = None
+			
 			# All functions are now normalized to accept kwargs only
 			# Call with params and unpacked special context
 			try:
