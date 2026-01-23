@@ -336,13 +336,16 @@ class LocalBrowserWatchdog(BaseWatchdog):
 		import shutil
 
 		# Build command - only use --with-deps on Linux (it fails on Windows/macOS)
-		# Use 'playwright' directly if available, otherwise fall back to 'uvx playwright'
+		# Use 'playwright' directly if available, otherwise fall back to 'python -m playwright', then 'uvx playwright'
 		if shutil.which('playwright'):
-			cmd = ['playwright', 'install', 'chrome']
+			cmd = ['playwright', 'install', 'chromium']
+		elif shutil.which('python'):
+			cmd = ['python', '-m', 'playwright', 'install', 'chromium']
 		else:
-			cmd = ['uvx', 'playwright', 'install', 'chrome']
-		if platform.system() == 'Linux':
-			cmd.append('--with-deps')
+			cmd = ['uvx', 'playwright', 'install', 'chromium']
+		# Skip --with-deps as it requires root access on most cloud platforms
+		# if platform.system() == 'Linux':
+		# 	cmd.append('--with-deps')
 
 		# Run in subprocess with timeout
 		process = await asyncio.create_subprocess_exec(
@@ -358,7 +361,7 @@ class LocalBrowserWatchdog(BaseWatchdog):
 			if browser_path:
 				return browser_path
 			self.logger.error(f'[LocalBrowserWatchdog] ❌ Playwright local browser installation error: \n{stdout}\n{stderr}')
-			raise RuntimeError('No local browser path found after: uvx playwright install chrome')
+			raise RuntimeError(f'No local browser path found after: {" ".join(cmd)}')
 		except TimeoutError:
 			# Kill the subprocess if it times out
 			process.kill()
