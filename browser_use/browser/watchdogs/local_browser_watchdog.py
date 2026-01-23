@@ -324,9 +324,14 @@ class LocalBrowserWatchdog(BaseWatchdog):
 	async def _install_browser_with_playwright(self) -> str:
 		"""Get browser executable path from playwright in a subprocess to avoid thread issues."""
 		import platform
+		import shutil
 
 		# Build command - only use --with-deps on Linux (it fails on Windows/macOS)
-		cmd = ['uvx', 'playwright', 'install', 'chrome']
+		# Use 'playwright' directly if available, otherwise fall back to 'uvx playwright'
+		if shutil.which('playwright'):
+			cmd = ['playwright', 'install', 'chrome']
+		else:
+			cmd = ['uvx', 'playwright', 'install', 'chrome']
 		if platform.system() == 'Linux':
 			cmd.append('--with-deps')
 
