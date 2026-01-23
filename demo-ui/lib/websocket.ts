@@ -17,6 +17,7 @@ export interface LiveDemoMessage {
 	completion_tokens?: number
 	steps?: number
 	cost?: number
+	duration?: number
 	mode?: string
 	level?: string  // Log level: INFO, WARNING, ERROR, DEBUG
 	agents?: Array<{
