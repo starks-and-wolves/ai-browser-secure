@@ -96,6 +96,19 @@ class AWIManager:
         if isinstance(registration_url, dict):
             registration_url = registration_url.get('endpoint')
 
+        # Fallback: try to get registration URL from examples section
+        if not registration_url:
+            examples = self.manifest.get('examples', {})
+            reg_example = examples.get('registration', {})
+            if isinstance(reg_example, dict):
+                req = reg_example.get('request', {})
+                registration_url = req.get('url')
+
+        # Fallback: construct registration URL from base_url
+        if not registration_url and self.base_url:
+            registration_url = f"{self.base_url.rstrip('/')}/api/agent/register"
+            logger.info(f"Using fallback registration URL: {registration_url}")
+
         if not registration_url:
             raise ValueError("No registration endpoint found in manifest")
 
