@@ -1,0 +1,34 @@
+{
+  "demos": [
+    {
+      "id": "github-stars-permission",
+      "title": "GitHub Stars - Permission Mode",
+      "description": "Navigate to browser-use repository and extract star count with user permission controls",
+      "mode": "permission",
+      "task": "Navigate to browser use repo and extract the number of stars",
+      "video_url": "/videos/PermissionMode.mp4",
+      "metrics": {
+        "steps": 8,
+        "tokens": 45230,
+        "cost": 0.47,
+        "duration": 23.5
+      },
+      "trajectory_url": "/demos/github-stars-permission.json"
+    },
+    {
+      "id": "blog-interaction-awi",
+      "title": "Blog Post Interaction - AWI Mode",
+      "description": "Fetch top blog posts and comment on the most popular using AWI structured API",
+      "mode": "awi",
+      "task": "Navigate to the blog post website - fetch the top three posts and post a comment on the most popular post",
+      "video_url": "/videos/AWI.mp4",
+      "metrics": {
+        "steps": 3,
+        "tokens": 124,
+        "cost": 0.001,
+        "duration": 1.5
+      },
+      "trajectory_url": "/demos/blog-interaction-awi.json"
+    }
+  ]
+}

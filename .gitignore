@@ -34,6 +34,7 @@ dist/
 !package.json
 !package-lock.json
 !tsconfig.json
+!demo-ui/public/demos/*.json
 !next-env.d.ts
 
 # Node.js / npm
