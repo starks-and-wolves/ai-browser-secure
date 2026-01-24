@@ -35,7 +35,7 @@ export default function Home() {
 						animate={{ opacity: 1 }}
 						transition={{ delay: 0.4, duration: 0.8 }}
 					>
-						10x More Efficient Than Traditional Scraping
+						360x More Efficient with AWI Mode
 					</motion.p>
 					<motion.p
 						className="text-xl text-gray-300 max-w-3xl mx-auto mb-8"
@@ -43,8 +43,7 @@ export default function Home() {
 						animate={{ opacity: 1 }}
 						transition={{ delay: 0.6, duration: 0.8 }}
 					>
-						Experience the power of browser-use with three execution modes: Traditional DOM parsing,
-						Permission-based security, and revolutionary AWI mode with structured APIs.
+						Experience the power of browser-use with Permission-based security controls and revolutionary AWI mode with structured APIs - showcasing real-world GitHub repository analysis and blog post interaction.
 					</motion.p>
 					<motion.div
 						className="flex justify-center gap-4 flex-wrap"
@@ -93,11 +92,11 @@ export default function Home() {
 						role="article"
 						aria-label="Token reduction metric"
 					>
-						<div className="text-5xl font-bold text-blue-400 mb-2" aria-label="95 percent">
-							95%
+						<div className="text-5xl font-bold text-blue-400 mb-2" aria-label="99.7 percent">
+							99.7%
 						</div>
 						<div className="text-xl mb-1">Token Reduction</div>
-						<div className="text-gray-400 text-sm">10K → 500 tokens</div>
+						<div className="text-gray-400 text-sm">45K → 124 tokens</div>
 					</motion.div>
 					<motion.div
 						className="bg-gray-800 rounded-lg p-6 text-center"
@@ -108,11 +107,11 @@ export default function Home() {
 						role="article"
 						aria-label="Cost per task metric"
 					>
-						<div className="text-5xl font-bold text-green-400 mb-2" aria-label="0.01 dollars">
-							$0.01
+						<div className="text-5xl font-bold text-green-400 mb-2" aria-label="0.001 dollars">
+							$0.001
 						</div>
 						<div className="text-xl mb-1">Cost per Task</div>
-						<div className="text-gray-400 text-sm">vs $0.10 traditional</div>
+						<div className="text-gray-400 text-sm">vs $0.47 permission</div>
 					</motion.div>
 					<motion.div
 						className="bg-gray-800 rounded-lg p-6 text-center"
@@ -123,11 +122,11 @@ export default function Home() {
 						role="article"
 						aria-label="Speed improvement metric"
 					>
-						<div className="text-5xl font-bold text-purple-400 mb-2" aria-label="5 times faster">
-							5x
+						<div className="text-5xl font-bold text-purple-400 mb-2" aria-label="16 times faster">
+							16x
 						</div>
 						<div className="text-xl mb-1">Speed Improvement</div>
-						<div className="text-gray-400 text-sm">3s vs 15s</div>
+						<div className="text-gray-400 text-sm">1.5s vs 24s</div>
 					</motion.div>
 				</motion.div>
 
@@ -138,7 +137,7 @@ export default function Home() {
 					animate={{ opacity: 1, y: 0 }}
 					transition={{ delay: 1.8, duration: 0.8 }}
 				>
-					<h2 className="text-4xl font-bold text-center mb-8">Three Execution Modes</h2>
+					<h2 className="text-4xl font-bold text-center mb-8">Execution Mode Comparison</h2>
 					<div className="bg-gray-800 rounded-lg overflow-hidden">
 						<table className="w-full">
 							<thead className="bg-gray-700">
@@ -152,21 +151,21 @@ export default function Home() {
 							<tbody className="divide-y divide-gray-700">
 								<tr>
 									<td className="px-6 py-4 font-semibold">Token Usage</td>
-									<td className="px-6 py-4 text-center">10,000 🪙</td>
-									<td className="px-6 py-4 text-center">8,000 🪙</td>
-									<td className="px-6 py-4 text-center text-green-400">500 🪙</td>
+									<td className="px-6 py-4 text-center">50,000 🪙</td>
+									<td className="px-6 py-4 text-center">45,000 🪙</td>
+									<td className="px-6 py-4 text-center text-green-400">124 🪙</td>
 								</tr>
 								<tr>
 									<td className="px-6 py-4 font-semibold">Cost/Task</td>
-									<td className="px-6 py-4 text-center">$0.10</td>
-									<td className="px-6 py-4 text-center">$0.08</td>
-									<td className="px-6 py-4 text-center text-green-400">$0.01</td>
+									<td className="px-6 py-4 text-center">$0.52</td>
+									<td className="px-6 py-4 text-center">$0.47</td>
+									<td className="px-6 py-4 text-center text-green-400">$0.001</td>
 								</tr>
 								<tr>
 									<td className="px-6 py-4 font-semibold">Speed</td>
-									<td className="px-6 py-4 text-center">15s</td>
-									<td className="px-6 py-4 text-center">12s</td>
-									<td className="px-6 py-4 text-center text-green-400">3s</td>
+									<td className="px-6 py-4 text-center">28s</td>
+									<td className="px-6 py-4 text-center">24s</td>
+									<td className="px-6 py-4 text-center text-green-400">1.5s</td>
 								</tr>
 								<tr>
 									<td className="px-6 py-4 font-semibold">Security</td>
@@ -404,7 +403,7 @@ export default function Home() {
 						<div className="text-center text-gray-400 border-t border-gray-700 pt-6">
 							<p className="mb-2">Built with browser-use | Open Source</p>
 							<p className="text-sm text-gray-500">
-								Demo application showcasing AWI mode, Permission controls, and Traditional browser automation
+								Demo application showcasing AWI mode and Permission controls for secure AI browser automation
 							</p>
 						</div>
 					</div>

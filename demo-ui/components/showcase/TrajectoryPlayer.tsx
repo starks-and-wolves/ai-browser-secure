@@ -1,19 +1,20 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { DemoStep } from '@/lib/types'
 
 interface TrajectoryPlayerProps {
 	steps: DemoStep[]
 	title: string
 	mode: string
-	videoUrl?: string // Optional video URL for traditional mode
+	videoUrl?: string // Optional video URL for any demo mode
 }
 
 export default function TrajectoryPlayer({ steps, title, mode, videoUrl }: TrajectoryPlayerProps) {
 	const [currentStepIndex, setCurrentStepIndex] = useState(0)
 	const [isPlaying, setIsPlaying] = useState(false)
 	const [playbackSpeed, setPlaybackSpeed] = useState(1) // 1x, 2x, 4x
+	const videoRef = useRef<HTMLVideoElement>(null)
 
 	const currentStep = steps[currentStepIndex]
 	const progress = ((currentStepIndex + 1) / steps.length) * 100
@@ -34,6 +35,13 @@ export default function TrajectoryPlayer({ steps, title, mode, videoUrl }: Traje
 
 		return () => clearInterval(interval)
 	}, [isPlaying, playbackSpeed, steps.length])
+
+	// Update video playback speed
+	useEffect(() => {
+		if (videoRef.current) {
+			videoRef.current.playbackRate = playbackSpeed
+		}
+	}, [playbackSpeed])
 
 	const handlePlayPause = () => {
 		if (currentStepIndex >= steps.length - 1) {
@@ -123,12 +131,13 @@ export default function TrajectoryPlayer({ steps, title, mode, videoUrl }: Traje
 					</div>
 				</div>
 
-				{/* Video Player (for traditional mode) or Screenshot */}
-				{videoUrl && mode === 'traditional' ? (
+				{/* Video Player or Screenshot */}
+				{videoUrl ? (
 					<div className="mb-6">
 						<h4 className="text-sm font-semibold text-gray-400 mb-2">Demo Recording:</h4>
 						<div className="bg-gray-900 rounded p-2">
 							<video
+								ref={videoRef}
 								key={videoUrl}
 								controls
 								className="w-full h-auto rounded"
@@ -139,7 +148,7 @@ export default function TrajectoryPlayer({ steps, title, mode, videoUrl }: Traje
 								Your browser does not support the video tag.
 							</video>
 							<p className="text-xs text-gray-500 mt-2 text-center">
-								Video shows actual browser navigation during execution
+								Video shows actual browser navigation during execution • Speed: {playbackSpeed}x
 							</p>
 						</div>
 					</div>
