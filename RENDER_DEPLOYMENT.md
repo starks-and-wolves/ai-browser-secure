@@ -395,7 +395,7 @@ This allows all `*.onrender.com` domains.
 ### Project Support
 
 - **Issues:** Open issue on GitHub
-- **Troubleshooting:** See [REPLIT_TROUBLESHOOTING.md](REPLIT_TROUBLESHOOTING.md) (many tips apply to Render too)
+- **Troubleshooting:** See the troubleshooting section above
 
 ---
 

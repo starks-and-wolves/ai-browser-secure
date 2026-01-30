@@ -1,6 +1,6 @@
 """
 Entry point for browser-use backend
-Runs the FastAPI demo server on Replit, Render, or other platforms
+Runs the FastAPI demo server on Render or other platforms
 """
 import sys
 import os
@@ -13,19 +13,15 @@ if sys.platform == 'win32':
 # Set environment
 os.environ['BROWSER_USE_LOGGING_LEVEL'] = 'info'
 
-# Get port from environment (Replit/Render sets this automatically)
+# Get port from environment (Render sets this automatically)
 port = int(os.getenv('PORT', 8000))
 
 # Detect platform
-is_replit = os.getenv('REPL_ID') is not None
 is_render = os.getenv('RENDER') is not None
 
 print(f"🚀 Starting browser-use demo server on port {port}")
 
-if is_replit:
-	print(f"📍 Environment: Replit")
-	print(f"🌐 Access at: https://{os.getenv('REPL_SLUG', 'browser-use-backend')}.{os.getenv('REPL_OWNER', 'your-username')}.repl.co")
-elif is_render:
+if is_render:
 	print(f"📍 Environment: Render")
 	render_url = os.getenv('RENDER_EXTERNAL_URL', 'https://your-app.onrender.com')
 	print(f"🌐 Access at: {render_url}")

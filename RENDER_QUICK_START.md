@@ -134,7 +134,7 @@ Full guide: [RENDER_DEPLOYMENT.md](RENDER_DEPLOYMENT.md)
 
 ## 🎉 That's It!
 
-Your demo is now live and stable on Render. No more Replit issues!
+Your demo is now live and stable on Render!
 
 Share your frontend URL with anyone: `https://browser-use-frontend.onrender.com`
 
@@ -142,7 +142,7 @@ Share your frontend URL with anyone: `https://browser-use-frontend.onrender.com`
 
 **Total Time:** 5 minutes (automatic) or 10 minutes (manual)
 **Cost:** $0/month
-**Stability:** ⭐⭐⭐⭐⭐ (Much better than Replit!)
+**Stability:** ⭐⭐⭐⭐⭐
 
 ---
 

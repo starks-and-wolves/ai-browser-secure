@@ -785,47 +785,34 @@ uv run ruff format
 
 Deploy the demo server and UI to free platforms:
 
-## Replit (Recommended for Quick Demos)
+## Render (Recommended)
 
-Deploy both backend and frontend on Replit with optimized browser settings:
-
-```bash
-# Backend setup (in backend Repl)
-./replit_setup.sh
-
-# Frontend setup (in frontend Repl)
-cd demo-ui && ./replit_setup.sh
-```
+Deploy both backend and frontend on Render:
 
 **Features:**
-- ✅ Free tier available (sleeps after 1 hour)
-- ✅ Automatic optimizations for limited resources
+- ✅ Free tier available (sleeps after 15 minutes)
 - ✅ WebSocket support for live demos
 - ✅ Easy setup from GitHub
+- ✅ Auto-deploy on push
 
-**📖 Full guide:** See [REPLIT_DEPLOYMENT.md](REPLIT_DEPLOYMENT.md)
+**📖 Full guide:** See [RENDER_DEPLOYMENT.md](RENDER_DEPLOYMENT.md) or [RENDER_QUICK_START.md](RENDER_QUICK_START.md)
 
 ## Configuration Files
 
 This repository includes pre-configured deployment files:
 
 **Backend:**
-- `.replit` - Replit configuration
-- `replit.nix` - System dependencies
+- `render.yaml` - Render Blueprint configuration
 - `main.py` - Entry point
-- `browser_use/demo_server/replit_config.py` - Optimized browser settings
 
 **Frontend:**
-- `demo-ui/.replit` - Replit configuration
-- `demo-ui/replit.nix` - Node.js dependencies
 - `demo-ui/.env.production` - Environment template
 
 **Other Platforms:**
-- Render: Forever free tier, auto-sleeps after 15min
 - Vercel + Render: Best for production (frontend never sleeps)
 - Fly.io: Best performance, 3 free VMs
 
-See [REPLIT_DEPLOYMENT.md](REPLIT_DEPLOYMENT.md) for details on all platforms.
+See [RENDER_DEPLOYMENT.md](RENDER_DEPLOYMENT.md) for deployment details.
 
 <br/>
 

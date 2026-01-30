@@ -2,20 +2,7 @@
 
 The frontend needs to know where your backend is running. Here's how to configure it:
 
-## 🤖 Auto-Detection (Replit)
-
-On Replit, the frontend will **automatically detect** your backend URL if it follows the naming pattern:
-
-- Frontend Repl: `browser-use-frontend.USERNAME.repl.co`
-- Backend Repl: `browser-use-backend.USERNAME.repl.co`
-
-**No configuration needed!** The auto-detection will find your backend.
-
----
-
-## ⚙️ Manual Configuration
-
-If auto-detection doesn't work or you're using a custom setup:
+## ⚙️ Configuration Options
 
 ### Option 1: Environment Variable (Recommended)
 
@@ -25,7 +12,7 @@ If auto-detection doesn't work or you're using a custom setup:
 nano .env.production
 
 # Add your backend URL:
-NEXT_PUBLIC_API_URL=https://browser-use-backend.YOUR_USERNAME.repl.co
+NEXT_PUBLIC_API_URL=https://your-backend.onrender.com
 
 # Save and rebuild:
 rm -rf .next
@@ -33,22 +20,7 @@ npm run build
 npm start
 ```
 
-### Option 2: Replit Secrets
-
-In your Replit frontend:
-
-1. Click **🔒 "Secrets"** (lock icon)
-2. Add secret:
-   - Key: `NEXT_PUBLIC_API_URL`
-   - Value: `https://browser-use-backend.YOUR_USERNAME.repl.co`
-3. Rebuild:
-   ```bash
-   rm -rf .next
-   npm run build
-   npm start
-   ```
-
-### Option 3: UI Settings (Runtime)
+### Option 2: UI Settings (Runtime)
 
 In the live demo page:
 
@@ -63,20 +35,11 @@ In the live demo page:
 
 ## 🔍 Finding Your Backend URL
 
-### On Replit:
+### By Platform:
 
-1. Go to your backend Repl
-2. Look at the URL bar or the webview panel
-3. Copy the URL that looks like:
-   ```
-   https://browser-use-backend.YOUR_USERNAME.repl.co
-   ```
-
-### On Other Platforms:
-
-- **Render**: `https://browser-use-backend.onrender.com`
-- **Fly.io**: `https://browser-use-backend.fly.dev`
-- **Vercel**: `https://browser-use-backend.vercel.app`
+- **Render**: `https://your-backend.onrender.com`
+- **Vercel**: `https://your-backend.vercel.app`
+- **Fly.io**: `https://your-backend.fly.dev`
 - **Local**: `http://localhost:8000`
 
 ---
@@ -88,7 +51,7 @@ In the live demo page:
 When you start a demo, you'll see:
 ```
 [18:22:57] Checking backend connection...
-[18:22:57] Backend URL: https://browser-use-backend.YOUR_USERNAME.repl.co
+[18:22:57] Backend URL: https://your-backend.onrender.com
 [18:22:57] Backend is reachable (123ms)
 ```
 
@@ -119,7 +82,7 @@ In the UI:
 ```bash
 # Set the variable
 nano .env.production
-# Add: NEXT_PUBLIC_API_URL=https://backend.repl.co
+# Add: NEXT_PUBLIC_API_URL=https://your-backend.onrender.com
 
 # Clear and rebuild
 rm -rf .next node_modules
@@ -133,27 +96,27 @@ npm start
 **Problem:** Backend URL is wrong or backend is not running.
 
 **Fix:**
-1. Check backend is running (should show green indicator)
-2. Visit backend URL in browser: `https://backend.repl.co/health`
+1. Check backend is running
+2. Visit backend URL in browser: `https://your-backend.onrender.com/health`
 3. Should return: `{"status":"healthy"}`
-4. If not working, go to backend Repl and click "Run"
+4. If not working, check your deployment logs
 
 ### "Failed to fetch" / CORS Error
 
 **Problem:** Backend CORS not configured or wrong URL.
 
 **Fix:**
-1. Backend CORS is already configured for `*.repl.co`
-2. Make sure both Repls are running
-3. Restart both Repls
+1. Backend CORS is already configured for `*.onrender.com` and `*.vercel.app`
+2. Make sure both services are running
+3. Restart both services
 4. Check browser console (F12) for detailed error
 
 ---
 
 ## 📋 Quick Checklist
 
-- [ ] Backend Repl is running
-- [ ] Backend URL set in `.env.production` OR Replit Secrets
+- [ ] Backend is running
+- [ ] Backend URL set in `.env.production`
 - [ ] Frontend rebuilt after setting URL (`npm run build`)
 - [ ] Frontend restarted
 - [ ] Test connection shows ✅
@@ -163,21 +126,17 @@ npm start
 
 ## 💡 Pro Tips
 
-1. **Use Replit Secrets** instead of `.env.production` for easier updates
-2. **Auto-detection works** if you name your Repls correctly
-3. **Test connection first** before running a full demo
-4. **Check the logs** - they tell you exactly what backend URL is being used
-5. **Rebuild is required** - Next.js bakes env vars into the build
+1. **Test connection first** before running a full demo
+2. **Check the logs** - they tell you exactly what backend URL is being used
+3. **Rebuild is required** - Next.js bakes env vars into the build
 
 ---
 
 ## 🆘 Still Having Issues?
 
 See:
-- [REPLIT_TROUBLESHOOTING.md](../REPLIT_TROUBLESHOOTING.md) - Detailed troubleshooting
-- [FIXES_APPLIED.md](../FIXES_APPLIED.md) - Recent fixes for common issues
-- [REPLIT_DEPLOYMENT.md](../REPLIT_DEPLOYMENT.md) - Full deployment guide
+- [RENDER_DEPLOYMENT.md](../RENDER_DEPLOYMENT.md) - Full deployment guide for Render
 
 ---
 
-**Last Updated:** 2026-01-22
+**Last Updated:** 2026-01-30

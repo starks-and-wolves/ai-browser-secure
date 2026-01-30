@@ -15,27 +15,12 @@ interface LogEntry {
 }
 
 export default function LiveDemoPage() {
-	// Auto-detect backend URL from environment or infer from hostname
+	// Auto-detect backend URL from environment
 	const getDefaultBackendUrl = () => {
 		// Check environment variable first
 		const envUrl = process.env.NEXT_PUBLIC_API_URL
 		if (envUrl && envUrl !== 'http://localhost:8000') {
 			return envUrl
-		}
-
-		// If running on Replit, try to infer backend URL
-		if (typeof window !== 'undefined') {
-			const hostname = window.location.hostname
-
-			// Pattern: frontend-name.username.repl.co -> backend-name.username.repl.co
-			if (hostname.includes('.repl.co') || hostname.includes('.replit.dev')) {
-				const parts = hostname.split('.')
-				if (parts.length >= 3) {
-					// Replace frontend name with backend name
-					const backendHostname = hostname.replace(/^[^.]+/, 'browser-use-backend')
-					return `https://${backendHostname}`
-				}
-			}
 		}
 
 		// Default fallback
